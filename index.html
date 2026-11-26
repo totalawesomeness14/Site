@@ -111,6 +111,7 @@ function toItem(f, kind, i) {
     bottle: /bottle|refill|fill(er|ing)/i.test(Object.entries(props).filter(([k]) => /type|categ|alternative|name|detail|descr/i.test(k)).map(([, v]) => v).join(" ")),
     props,
     assetId: find(["assetid"]),
+    locId: find(["id"]),
     nameKeys: Object.entries(props).filter(([k]) => /^(name|location|alternative_?name|asset_?name)$/i.test(k)).map(([, v]) => norm(v)),
     live: null,
     rawId: find(["assetid", "id", "locationid", "facilityid", "objectid"]),
@@ -178,14 +179,18 @@ function liveClosed(L) {           // true when the City's alert means the whole
   return /closed/.test(t) && !/\bopen\b/.test(t) && !PARTIAL.test(t);
 }
 // The City's live status feed: Status 0 = closed, 1 = open, 2 = service alert.
-const LIVE_FEEDS = [
-  LIVE_STATUS,
-  "https://www.toronto.ca/data/parks/live/dws_allupdates.json",
-  "https://www.toronto.ca/data/parks/live/drinkingwater_allupdates.json",
-  "https://www.toronto.ca/data/parks/live/fountain_allupdates.json"
-];
+const FEED_NAMES = ["washroom_allupdates", "dws_allupdates", "drinkingwater_allupdates", "fountain_allupdates"];
+// Optional relay (see worker.js). Open the page once as  index.html?relay=https://YOUR-WORKER.workers.dev  and it is remembered.
+const RELAY = (() => {
+  try {
+    const q = new URLSearchParams(location.search).get("relay");
+    if (q) localStorage.setItem("wf-relay", q);
+    return localStorage.getItem("wf-relay") || "";
+  } catch (e) { return ""; }
+})();
+const feedURL = n => RELAY ? RELAY.replace(/\/+$/, "") + "/?f=" + n : "https://www.toronto.ca/data/parks/live/" + n + ".json";
 async function readFeed(url) {
-  const r = await fetch(url + "?_=" + Date.now());
+  const r = await fetch(url + (url.includes("?") ? "&" : "?") + "_=" + Date.now());
   if (!r.ok) throw new Error("HTTP " + r.status);
   const j = await r.json();
   return Array.isArray(j) ? j : (j.locations || Object.values(j).find(Array.isArray) || []);
@@ -193,38 +198,41 @@ async function readFeed(url) {
 async function mergeLive() {
   const notes = [];
   S.unmatched = []; S.feedRows = [];
-  for (const url of LIVE_FEEDS) {
-    const label = url.split("/").pop().replace(".json", "");
+  for (const label of FEED_NAMES) {
+    const kind = label.startsWith("washroom") ? "washroom" : "water";
+    const pool = S.items.filter(f => f.kind === kind);
     try {
-      const rows = await readFeed(url);
+      const rows = await readFeed(feedURL(label));
       S.feedRows.push(...rows.map(e => ({feed: label, ...e})));
-      const byId = new Map(), byName = new Map();
+      const infoOf = e => ({status: Number(e.Status), reason: e.Reason || "", comments: e.Comments || "", posted: e.PostedDate || ""});
+      const byAsset = new Map(), byLoc = new Map(), byName = new Map();
       for (const e of rows) {
-        const info = {status: Number(e.Status), reason: e.Reason || "", comments: e.Comments || "", posted: e.PostedDate || ""};
-        if (e.AssetID != null) byId.set(String(e.AssetID), info);
+        const info = infoOf(e);
+        if (e.AssetID != null) byAsset.set(String(e.AssetID), info);
+        if (e.LocationID != null) byLoc.set(String(e.LocationID), info);
         if (e.AssetName) byName.set(norm(e.AssetName), info);
       }
       const used = new Set();
-      for (const f of S.items) {
-        const info = (f.assetId && byId.get(f.assetId)) || f.nameKeys.map(k => byName.get(k)).find(Boolean);
+      for (const f of pool) {
+        const info = (f.assetId && byAsset.get(f.assetId)) || (f.locId && byLoc.get(f.locId)) || f.nameKeys.map(k => byName.get(k)).find(Boolean);
         if (info) { f.live = info; used.add(info); }
       }
       for (const e of rows) {                       // looser name pass
-        const info = byId.get(String(e.AssetID)) || byName.get(norm(e.AssetName || ""));
+        const info = byName.get(norm(e.AssetName || ""));
         const key = norm(e.AssetName || "");
         if (!info || used.has(info) || key.length < 10) continue;
-        for (const f of S.items) {
+        for (const f of pool) {
           if (!f.live && f.nameKeys.some(k => k.length >= 10 && (k.includes(key) || key.includes(k)))) { f.live = info; used.add(info); }
         }
       }
-      const miss = rows.filter(e => { const i = byId.get(String(e.AssetID)) || byName.get(norm(e.AssetName || "")); return !i || !used.has(i); });
+      const miss = rows.filter(e => { const i = byAsset.get(String(e.AssetID)) || byLoc.get(String(e.LocationID)) || byName.get(norm(e.AssetName || "")); return !i || !used.has(i); });
       S.unmatched.push(...miss.map(e => `[${label}] ${e.AssetID} | ${e.AssetName} | status ${e.Status}`));
       notes.push(label + ": " + used.size + "/" + rows.length + " matched");
     } catch (e) {
-      notes.push(label + ": " + (url === LIVE_STATUS ? "can’t be read (" + (e.message || e) + ")" : "not available"));
+      notes.push(label + ": " + (label.startsWith("washroom") ? "can’t be read (" + (e.message || e) + ")" : "not available"));
     }
   }
-  sourceNote += " Live status — " + notes.join("; ") + ".";
+  sourceNote += (RELAY ? " Live status (via relay) — " : " Live status — ") + notes.join("; ") + ".";
   drawMarkers(); if (!S.sel) render();
 }
 
