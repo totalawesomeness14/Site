@@ -179,60 +179,64 @@ function liveClosed(L) {           // true when the City's alert means the whole
   return /closed/.test(t) && !/\bopen\b/.test(t) && !PARTIAL.test(t);
 }
 // The City's live status feed: Status 0 = closed, 1 = open, 2 = service alert.
-const FEED_NAMES = ["washroom_allupdates", "dws_allupdates", "drinkingwater_allupdates", "fountain_allupdates"];
-// Optional relay (see worker.js). Open the page once as  index.html?relay=https://YOUR-WORKER.workers.dev  and it is remembered.
-const RELAY = (() => {
+// Open Data portal datasets that carry the City's status columns (Status 0 = closed, 1 = open, 2 = service alert).
+const STATUS_SOURCES = [
+  {kind: "washroom", slugs: ["washroom-facilities"], file: "data/washroom.geojson"},
+  {kind: "water", slugs: ["parks-drinking-water-source", "parks-and-recreation-drinking-water-source", "drinking-water-sources"], file: "data/water.geojson"}
+];
+async function portalRows(src) {
+  const errs = [];
+  // 1) straight from the Open Data portal (works if the portal allows browser requests)
+  for (const slug of src.slugs) {
+    try {
+      const meta = await (await fetch(CKAN + slug)).json();
+      const res = meta.result.resources.filter(r => (r.format || "").toLowerCase() === "geojson");
+      const pick = res.find(r => (r.name || "").includes("4326")) || res[0];
+      const gj = await (await fetch(pick.url)).json();
+      return {features: gj.features || [], via: "portal"};
+    } catch (e) { errs.push(slug + ": " + (e.message || e)); }
+  }
+  // 2) copy kept on this site, refreshed from the portal by the GitHub workflow
   try {
-    const q = new URLSearchParams(location.search).get("relay");
-    if (q) localStorage.setItem("wf-relay", q);
-    return localStorage.getItem("wf-relay") || "";
-  } catch (e) { return ""; }
-})();
-const feedURL = n => RELAY ? RELAY.replace(/\/+$/, "") + "/?f=" + n : "https://www.toronto.ca/data/parks/live/" + n + ".json";
-async function readFeed(url) {
-  const r = await fetch(url + (url.includes("?") ? "&" : "?") + "_=" + Date.now());
-  if (!r.ok) throw new Error("HTTP " + r.status);
-  const j = await r.json();
-  return Array.isArray(j) ? j : (j.locations || Object.values(j).find(Array.isArray) || []);
+    const r = await fetch(src.file + "?_=" + Date.now());
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    const modified = r.headers.get("last-modified");
+    const gj = await r.json();
+    return {features: gj.features || [], via: "copy", modified: modified ? new Date(modified).toLocaleString("en-CA", {timeZone: "America/Toronto"}) : ""};
+  } catch (e) { errs.push("copy: " + (e.message || e)); }
+  throw new Error(errs.join(" | "));
 }
 async function mergeLive() {
   const notes = [];
   S.unmatched = []; S.feedRows = [];
-  for (const label of FEED_NAMES) {
-    const kind = label.startsWith("washroom") ? "washroom" : "water";
-    const pool = S.items.filter(f => f.kind === kind);
+  const clean = v => (v == null || String(v).trim().toLowerCase() === "none") ? "" : String(v).trim();
+  for (const src of STATUS_SOURCES) {
+    const pool = S.items.filter(f => f.kind === src.kind);
     try {
-      const rows = await readFeed(feedURL(label));
-      S.feedRows.push(...rows.map(e => ({feed: label, ...e})));
-      const infoOf = e => ({status: Number(e.Status), reason: e.Reason || "", comments: e.Comments || "", posted: e.PostedDate || ""});
-      const byAsset = new Map(), byLoc = new Map(), byName = new Map();
+      const {features, via, modified} = await portalRows(src);
+      const rows = features.map(x => x.properties || {}).filter(p => p.Status != null && p.Status !== "");
+      if (!rows.length) throw new Error("no Status column");
+      S.feedRows.push(...rows.map(e => ({feed: src.kind, ...e})));
+      const byAsset = new Map(), byName = new Map();
       for (const e of rows) {
-        const info = infoOf(e);
+        const info = {status: Number(e.Status), reason: clean(e.Reason), comments: clean(e.Comments), posted: clean(e.PostedDate).replace("T", " ")};
+        if (e.ASSET_ID != null) byAsset.set(String(e.ASSET_ID), info);
         if (e.AssetID != null) byAsset.set(String(e.AssetID), info);
-        if (e.LocationID != null) byLoc.set(String(e.LocationID), info);
-        if (e.AssetName) byName.set(norm(e.AssetName), info);
+        for (const n of [e.AssetName, e.ALTERNATIVE_NAME]) if (n) byName.set(norm(String(n)), info);
       }
       const used = new Set();
       for (const f of pool) {
-        const info = (f.assetId && byAsset.get(f.assetId)) || (f.locId && byLoc.get(f.locId)) || f.nameKeys.map(k => byName.get(k)).find(Boolean);
+        const info = (f.assetId && byAsset.get(f.assetId)) || f.nameKeys.map(k => byName.get(k)).find(Boolean);
         if (info) { f.live = info; used.add(info); }
       }
-      for (const e of rows) {                       // looser name pass
-        const info = byName.get(norm(e.AssetName || ""));
-        const key = norm(e.AssetName || "");
-        if (!info || used.has(info) || key.length < 10) continue;
-        for (const f of pool) {
-          if (!f.live && f.nameKeys.some(k => k.length >= 10 && (k.includes(key) || key.includes(k)))) { f.live = info; used.add(info); }
-        }
-      }
-      const miss = rows.filter(e => { const i = byAsset.get(String(e.AssetID)) || byLoc.get(String(e.LocationID)) || byName.get(norm(e.AssetName || "")); return !i || !used.has(i); });
-      S.unmatched.push(...miss.map(e => `[${label}] ${e.AssetID} | ${e.AssetName} | status ${e.Status}`));
-      notes.push(label + ": " + used.size + "/" + rows.length + " matched");
+      const miss = rows.filter(e => { const i = byAsset.get(String(e.ASSET_ID ?? e.AssetID)) || byName.get(norm(String(e.AssetName || e.ALTERNATIVE_NAME || ""))); return !i || !used.has(i); });
+      S.unmatched.push(...miss.map(e => `[${src.kind}] ${e.ASSET_ID ?? e.AssetID} | ${e.AssetName || e.ALTERNATIVE_NAME} | status ${e.Status}`));
+      notes.push(src.kind + ": " + used.size + "/" + rows.length + " matched, " + (via === "portal" ? "live from the Open Data portal" : "portal copy" + (modified ? " from " + modified : "")));
     } catch (e) {
-      notes.push(label + ": " + (label.startsWith("washroom") ? "can’t be read (" + (e.message || e) + ")" : "not available"));
+      notes.push(src.kind + ": no status data (" + (e.message || e) + ")");
     }
   }
-  sourceNote += (RELAY ? " Live status (via relay) — " : " Live status — ") + notes.join("; ") + ".";
+  sourceNote += " Status — " + notes.join("; ") + ".";
   drawMarkers(); if (!S.sel) render();
 }
 
