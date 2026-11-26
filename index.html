@@ -61,7 +61,6 @@ dl{margin:0}dt{font-size:12px;text-transform:uppercase;letter-spacing:.04em;colo
   <div id="body"></div>
 </section>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
 <script>
 const CKAN = "https://ckan0.cf.opendata.inter.prod-toronto.ca/api/3/action/package_show?id=";
 const SOURCES = [
@@ -72,10 +71,19 @@ const DEFAULT = [43.6532, -79.3832];
 const FILTERS = [["all", "All"], ["open", "🟢 Open now"], ["washroom", "🚻 Washrooms"], ["water", "💧 Drinking water"], ["bottle", "🚰 Bottle refill"], ["access", "♿ Accessible"]];
 const SNAPS = [0.32, 0.6, 0.9];
 
-const S = {feedRows: [], unmatched: [], items: [], filter: "all", q: "", pos: null, sel: null, snap: 0};
+const S = {feedRows: [], unmatched: [], items: [], filter: "all", q: "", pos: null, sel: null, snap: 0, waterAlertsOnly: false};
 const $ = id => document.getElementById(id);
 const esc = s => String(s).replace(/[&<>"']/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"}[c]));
 const norm = s => s.toLowerCase().replace(/[^a-z0-9]/g, "");
+const getProp = (obj, ...keys) => {
+  if (!obj) return null;
+  for (const w of keys) {
+    for (const k in obj) {
+      if (norm(k) === w && obj[k] != null && String(obj[k]).trim() !== "") return obj[k];
+    }
+  }
+  return null;
+};
 
 /* ---------- Map ---------- */
 const map = L.map("map", {zoomControl: false, attributionControl: true}).setView(DEFAULT, 12);
@@ -103,16 +111,32 @@ function toItem(f, kind, i) {
   const used = new Set(["name","assetname","facilityname","locationname","parkname","location","address","streetaddress","locationdetails","description","status","alert","statusmessage","servicealert","category","alternativename","assetid","url","website","link","id","objectid","latitude","longitude","lat","lng","lon","x","y","geometry"]);
   const negative = v => ["no","false","0","n","none","n/a"].includes(v.toLowerCase()) || v.toLowerCase().startsWith("not");
   if (decide) {
-    const hay = Object.entries(props).filter(([k]) => /type|categ|class/i.test(k)).map(([, v]) => v).join(" ").toLowerCase();
-    kind = /drinking|fountain|bottle|water/.test(hay) && !/washroom|restroom|toilet/.test(hay) ? "water" : "washroom";
+    const cat = (find(["category"]) || "").toLowerCase();
+    if (/drinking|water/.test(cat)) kind = "water";
+    else if (/washroom|restroom|toilet/.test(cat)) kind = "washroom";
+    else {
+      const hay = Object.entries(props).filter(([k]) => /type|categ|class/i.test(k)).map(([, v]) => v).join(" ").toLowerCase();
+      kind = /drinking|fountain|bottle|water/.test(hay) && !/washroom|restroom|toilet/.test(hay) ? "water" : "washroom";
+    }
   }
+  const loc = find(["location", "parkname"]);
+  const typ = find(["type"]);
+  const exactNames = [...new Set([
+    find(["alternativename"]),
+    find(["assetname"]),
+    find(["name"]),
+    (loc && typ) ? (loc + " " + typ) : null
+  ].filter(Boolean).map(norm))];
+  const locNames = [...new Set([loc].filter(Boolean).map(norm))];
   return {
     id: kind + i, kind, lat, lon, address,
     bottle: /bottle|refill|fill(er|ing)/i.test(Object.entries(props).filter(([k]) => /type|categ|alternative|name|detail|descr/i.test(k)).map(([, v]) => v).join(" ")),
     props,
     assetId: find(["assetid"]),
     locId: find(["id"]),
-    nameKeys: Object.entries(props).filter(([k]) => /^(name|location|alternative_?name|asset_?name)$/i.test(k)).map(([, v]) => norm(v)),
+    exactNames,
+    locNames,
+    nameKeys: [...new Set(exactNames.concat(locNames))],
     live: null,
     rawId: find(["assetid", "id", "locationid", "facilityid", "objectid"]),
     name: find(["name","assetname","facilityname","locationname","parkname","location","alternativename"]) || address || (kind === "water" ? "Drinking water" : "Washroom"),
@@ -130,7 +154,6 @@ function toItem(f, kind, i) {
 async function loadKind(src) {
   const errs = [];
   const fromGJ = gj => gj.features.map((f, i) => toItem(f, src.kind, i)).filter(Boolean);
-  // Fallback: City Open Data portal (CKAN)
   for (const slug of src.slugs) {
     try {
       const meta = await (await fetch(CKAN + slug)).json();
@@ -141,17 +164,14 @@ async function loadKind(src) {
       return fromGJ(gj);
     } catch (e) { errs.push(slug + ": " + String(e.message || e)); }
   }
-  // 3) Last cached copy
   try { return fromGJ(JSON.parse(localStorage.getItem("wf-" + src.kind))); }
   catch (e) { errs.push("no cache"); }
   const err = new Error(errs.join(" | ")); throw err;
 }
 
 const ARC = "https://services3.arcgis.com/b9WvedVPoizGfvfD/arcgis/rest/services/COT_washroom_drinkingwater/FeatureServer/0/query";
-const LIVE_STATUS = "https://www.toronto.ca/data/parks/live/washroom_allupdates.json";
 let sourceNote = "";
 
-// The City's own map layer: washrooms + drinking water, always current.
 async function loadArcGIS() {
   const feats = [];
   for (let offset = 0, n = 0; n < 15; n++) {
@@ -171,24 +191,67 @@ async function loadArcGIS() {
 }
 
 const PARTIAL = /\b(east|west|north|south|men|women|male|female|girls|boys|accessible|universal|stall|stalls|sink|sinks|one|single|partial|some|except|only|upper|lower|left|right|side)\b/i;
-function liveClosed(L) {           // true when the City's alert means the whole place is closed
+function liveClosed(L) {
   if (L.status === 0) return true;
   if (L.status !== 2) return false;
   const t = (L.reason + " " + L.comments).toLowerCase();
   if (/closed for the season|seasonal|out of service|not (yet )?open/.test(t)) return true;
   return /closed/.test(t) && !/\bopen\b/.test(t) && !PARTIAL.test(t);
 }
-// The City's live status feed: Status 0 = closed, 1 = open, 2 = service alert.
-// Open Data portal datasets that carry the City's status columns (Status 0 = closed, 1 = open, 2 = service alert).
+
 const STATUS_SOURCES = [
-  {kind: "washroom", slugs: ["washroom-facilities"], file: "data/washroom.geojson"},
-  {kind: "water", slugs: ["parks-drinking-fountains"], file: "data/water.geojson"}
+  {kind: "washroom", liveFiles: ["data/live-washroom.json"], slugs: ["washroom-facilities"], file: "data/washroom.geojson"},
+  {kind: "water", liveFiles: ["data/live-water.json", "data/live-washroom.json"], slugs: ["parks-drinking-fountains"], file: "data/water.geojson"}
 ];
+
+function extractRows(json) {
+  if (!json) return {rows: [], alertsOnly: false};
+  if (Array.isArray(json)) return {rows: json, alertsOnly: false};
+  if (Array.isArray(json.features)) return {rows: json.features.map(x => x.properties || {}), alertsOnly: false};
+  if (Array.isArray(json.rows)) return {rows: json.rows, alertsOnly: Boolean(json.alertsOnly)};
+  for (const k of ["facilities", "records", "locations", "data", "items"]) {
+    if (Array.isArray(json[k])) return {rows: json[k], alertsOnly: Boolean(json.alertsOnly)};
+  }
+  const vals = Object.values(json).flat().filter(v => v && typeof v === "object");
+  return {rows: vals, alertsOnly: Boolean(json.alertsOnly)};
+}
+
+function parseStatusVal(v) {
+  if (v == null) return null;
+  const n = Number(v);
+  if (!Number.isNaN(n) && String(v).trim() !== "") return n;
+  const s = String(v).toLowerCase();
+  if (/closed|out of service/.test(s)) return 0;
+  if (/alert|warning|partial|maintenance/.test(s)) return 2;
+  if (/open|operational/.test(s)) return 1;
+  return null;
+}
+
 async function portalRows(src) {
   const errs = [];
-  const hasStatus = fs => fs.some(x => x.properties && x.properties.Status != null && x.properties.Status !== "");
-  const keysOf = fs => Object.keys((fs[0] || {}).properties || {}).slice(0, 10).join(",");
-  // 1) straight from the Open Data portal, trying every GeoJSON file, then the data table
+  const hasStatus = rows => rows.some(p => parseStatusVal(getProp(p, "status")) != null);
+  const keysOf = rows => Object.keys(rows[0] || {}).slice(0, 10).join(",");
+
+  // 1) Local live status JSON cached by GitHub workflow
+  for (const lf of (src.liveFiles || [])) {
+    try {
+      const r = await fetch(lf + "?_=" + Date.now());
+      if (!r.ok) { errs.push(lf + ": HTTP " + r.status); continue; }
+      const modified = r.headers.get("last-modified");
+      const {rows, alertsOnly} = extractRows(await r.json());
+      if (hasStatus(rows)) {
+        return {
+          rows,
+          alertsOnly,
+          via: lf,
+          modified: modified ? new Date(modified).toLocaleString("en-CA", {timeZone: "America/Toronto"}) : ""
+        };
+      }
+      errs.push(lf + ": no status rows");
+    } catch (e) { errs.push(lf + ": " + (e.message || e)); }
+  }
+
+  // 2) Straight from the Open Data portal (GeoJSON, then DataStore)
   for (const slug of src.slugs) {
     try {
       const meta = await (await fetch(CKAN + slug)).json();
@@ -199,56 +262,99 @@ async function portalRows(src) {
       for (const r of geo.concat(tables)) {
         const label = r.name || r.format || "resource";
         try {
-          let fs;
+          let rows;
           if ((r.format || "").toLowerCase() === "geojson") {
-            fs = (await (await fetch(r.url)).json()).features || [];
+            rows = ((await (await fetch(r.url)).json()).features || []).map(x => x.properties || {});
           } else {
             const q = await (await fetch("https://ckan0.cf.opendata.inter.prod-toronto.ca/api/3/action/datastore_search?limit=5000&resource_id=" + r.id)).json();
-            fs = (q.result.records || []).map(rec => ({properties: rec}));
+            rows = q.result.records || [];
           }
-          if (hasStatus(fs)) return {features: fs, via: "portal"};
-          errs.push(label + ": no Status column (columns: " + keysOf(fs) + ")");
+          if (hasStatus(rows)) return {rows, alertsOnly: false, via: "portal"};
+          errs.push(label + ": no Status column (columns: " + keysOf(rows) + ")");
         } catch (e) { errs.push(label + ": " + (e.message || e)); }
       }
     } catch (e) { errs.push(slug + ": " + (e.message || e)); }
   }
-  // 2) copy kept on this site, refreshed from the portal by the GitHub workflow
+
+  // 3) Portal GeoJSON copy cached on this site by GitHub workflow
   try {
     const r = await fetch(src.file + "?_=" + Date.now());
     if (!r.ok) throw new Error("HTTP " + r.status);
     const modified = r.headers.get("last-modified");
-    const fs = (await r.json()).features || [];
-    if (!hasStatus(fs)) throw new Error("no Status column (columns: " + keysOf(fs) + ")");
-    return {features: fs, via: "copy", modified: modified ? new Date(modified).toLocaleString("en-CA", {timeZone: "America/Toronto"}) : ""};
+    const rows = ((await r.json()).features || []).map(x => x.properties || {});
+    if (!hasStatus(rows)) throw new Error("no Status column (columns: " + keysOf(rows) + ")");
+    return {rows, alertsOnly: false, via: "copy", modified: modified ? new Date(modified).toLocaleString("en-CA", {timeZone: "America/Toronto"}) : ""};
   } catch (e) { errs.push("site copy: " + (e.message || e)); }
+
   throw new Error(errs.join(" | "));
 }
+
 async function mergeLive() {
   const notes = [];
-  S.unmatched = []; S.feedRows = [];
+  S.unmatched = []; S.feedRows = []; S.waterAlertsOnly = false;
   const clean = v => (v == null || String(v).trim().toLowerCase() === "none") ? "" : String(v).trim();
   for (const src of STATUS_SOURCES) {
     const pool = S.items.filter(f => f.kind === src.kind);
     try {
-      const {features, via, modified} = await portalRows(src);
-      const rows = features.map(x => x.properties || {}).filter(p => p.Status != null && p.Status !== "");
+      const {rows: rawRows, alertsOnly, via, modified} = await portalRows(src);
+      const rows = rawRows.filter(p => parseStatusVal(getProp(p, "status")) != null);
       if (!rows.length) throw new Error("no Status column");
       S.feedRows.push(...rows.map(e => ({feed: src.kind, ...e})));
-      const byAsset = new Map(), byName = new Map();
+
+      const byAsset = new Map(), byExact = new Map(), byLoc = new Map(), locDup = new Set();
+      let hasOpenRow = false;
       for (const e of rows) {
-        const info = {status: Number(e.Status), reason: clean(e.Reason), comments: clean(e.Comments), posted: clean(e.PostedDate).replace("T", " ")};
-        if (e.ASSET_ID != null) byAsset.set(String(e.ASSET_ID), info);
-        if (e.AssetID != null) byAsset.set(String(e.AssetID), info);
-        for (const n of [e.AssetName, e.ALTERNATIVE_NAME]) if (n) byName.set(norm(String(n)), info);
+        const st = parseStatusVal(getProp(e, "status"));
+        if (st === 1) hasOpenRow = true;
+        const info = {
+          status: st,
+          reason: clean(getProp(e, "reason")),
+          comments: clean(getProp(e, "comments", "comment")),
+          posted: clean(getProp(e, "posteddate", "posted", "lastupdated")).replace("T", " ")
+        };
+        const aid = getProp(e, "assetid");
+        if (aid != null) byAsset.set(String(aid), info);
+        for (const n of [getProp(e, "assetname"), getProp(e, "alternativename"), getProp(e, "name")]) {
+          if (n) byExact.set(norm(String(n)), info);
+        }
+        const ln = getProp(e, "location", "parkname");
+        if (ln) {
+          const k = norm(String(ln));
+          if (byLoc.has(k)) locDup.add(k); else byLoc.set(k, info);
+        }
       }
+      for (const k of locDup) byLoc.delete(k);
+
       const used = new Set();
       for (const f of pool) {
-        const info = (f.assetId && byAsset.get(f.assetId)) || f.nameKeys.map(k => byName.get(k)).find(Boolean);
+        const info = (f.assetId && byAsset.get(f.assetId))
+          || f.exactNames.map(k => byExact.get(k)).find(Boolean)
+          || f.locNames.map(k => byLoc.get(k)).find(Boolean);
         if (info) { f.live = info; used.add(info); }
       }
-      const miss = rows.filter(e => { const i = byAsset.get(String(e.ASSET_ID ?? e.AssetID)) || byName.get(norm(String(e.AssetName || e.ALTERNATIVE_NAME || ""))); return !i || !used.has(i); });
-      S.unmatched.push(...miss.map(e => `[${src.kind}] ${e.ASSET_ID ?? e.AssetID} | ${e.AssetName || e.ALTERNATIVE_NAME} | status ${e.Status}`));
-      notes.push(src.kind + ": " + used.size + "/" + rows.length + " matched, " + (via === "portal" ? "live from the Open Data portal" : "portal copy" + (modified ? " from " + modified : "")));
+
+      if (src.kind === "water" && (alertsOnly || !hasOpenRow)) {
+        S.waterAlertsOnly = true;
+        const m = torontoNow().month; // 4 = May, 9 = Oct
+        const inSeason = m >= 4 && m <= 9;
+        for (const f of pool) {
+          if (!f.live) {
+            f.live = inSeason
+              ? {status: 1, reason: "No active closure or alert reported", comments: "", posted: "", inferred: true}
+              : {status: 0, reason: "Closed for the season (May–Oct)", comments: "", posted: "", inferred: true};
+          }
+        }
+      }
+
+      const miss = rows.filter(e => {
+        const aid = getProp(e, "assetid");
+        const nm = getProp(e, "assetname", "alternativename", "name", "location");
+        const i = (aid != null && byAsset.get(String(aid))) || (nm && (byExact.get(norm(String(nm))) || byLoc.get(norm(String(nm)))));
+        return !i || !used.has(i);
+      });
+      S.unmatched.push(...miss.map(e => `[${src.kind}] ${getProp(e, "assetid") || "no-id"} | ${getProp(e, "assetname", "alternativename", "name", "location") || "no-name"} | status ${getProp(e, "status")}`));
+      const srcLabel = via === "portal" ? "live from Open Data portal" : via === "copy" ? ("portal copy" + (modified ? " from " + modified : "")) : (via + (modified ? " from " + modified : ""));
+      notes.push(src.kind + ": " + used.size + "/" + rows.length + " matched, " + srcLabel);
     } catch (e) {
       notes.push(src.kind + ": no status data (" + (e.message || e) + ")");
     }
@@ -289,7 +395,7 @@ function torontoNow() {
   const g = t => p.find(x => x.type === t).value;
   return {day: DAYS.indexOf(g("weekday").toLowerCase().slice(0, 3)), month: +g("month") - 1, mins: (+g("hour") % 24) * 60 + +g("minute")};
 }
-const inRange = (v, a, b) => a <= b ? v >= a && v <= b : v >= a || v <= b;   // handles wrap (e.g. Nov–Mar)
+const inRange = (v, a, b) => a <= b ? v >= a && v <= b : v >= a || v <= b;
 function seasonOK(seg, month) {
   const m = seg.match(new RegExp("\\b(" + MON_RE + ")[a-z]*\\.?\\s*(?:to|-|–|—|through|until)\\s*(" + MON_RE + ")[a-z]*", "i"));
   if (!m) return null;
@@ -304,7 +410,7 @@ function dayOK(seg, day) {
   return inRange(day, a, b);
 }
 const TIME_RE = /(\d{1,2})(?::(\d{2}))?\s*([ap])?\.?m?\.?\s*(?:to|-|–|—|until)\s*(\d{1,2})(?::(\d{2}))?\s*([ap])\.?m\.?/gi;
-function openState(f) {            // true = open, false = closed, null = unknown
+function openState(f) {
   if (f.live) {
     if (liveClosed(f.live)) return false;
     return true;
@@ -335,10 +441,15 @@ function openState(f) {            // true = open, false = closed, null = unknow
 }
 const openPill = f => {
   const L = f.live;
-  if (L && liveClosed(L)) return '<span class="pill red">Closed</span>';
+  if (L && liveClosed(L)) return '<span class="pill red">' + (L.inferred ? 'Closed (off-season)' : 'Closed') + '</span>';
   if (L && L.status === 2) return '<span class="pill orange">Service alert</span>';
-  if (L && L.status === 1) return '<span class="pill green">Open</span>';
-  const s = openState(f); return s === true ? '<span class="pill green">Open now</span>' : s === false ? '<span class="pill red">Closed now</span>' : ""; };
+  if (L && L.status === 1) return '<span class="pill green">' + (L.inferred ? 'Open (no alerts)' : 'Open') + '</span>';
+  const s = openState(f);
+  if (s === true) return '<span class="pill green">Open now</span>';
+  if (s === false) return '<span class="pill red">Closed now</span>';
+  if (f.kind === "water") return '<span class="pill orange">Seasonal (May–Oct)</span>';
+  return "";
+};
 
 /* ---------- Helpers ---------- */
 function dist(f) {
@@ -377,11 +488,11 @@ function render() {
       <a class="btn alt" href="${dirs}">Google Maps</a>
       ${f.url && /^https?:/.test(f.url) ? `<a class="btn alt" href="${esc(f.url)}">Website</a>` : ""}</div>
       <dl>
-        ${f.address ? `<dt>Address</dt><dd>${esc(f.address)}</dd>` : ""}
-        ${f.live && (f.live.reason || f.live.comments) ? `<dt>City status update</dt><dd>${esc([f.live.reason, f.live.comments].filter(Boolean).join(" — "))}</dd>${f.live.posted ? `<dd class="sub">Posted ${esc(f.live.posted)}</dd>` : ""}` : ""}
-        ${f.hours ? `<dt>Hours</dt><dd>${esc(f.hours)}</dd>${(f.live || openState(f) === null) ? "" : `<dd class="sub">Open/closed is worked out from the listed hours (Toronto time).</dd>`}` : ""}
-        ${f.details ? `<dt>Where</dt><dd>${esc(f.details)}</dd>` : ""}
-        ${f.extras.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join("")}
+      ${f.address ? `<dt>Address</dt><dd>${esc(f.address)}</dd>` : ""}
+      ${f.live && (f.live.reason || f.live.comments) ? `<dt>City status update</dt><dd>${esc([f.live.reason, f.live.comments].filter(Boolean).join(" — "))}</dd>${f.live.posted ? `<dd class="sub">Posted ${esc(f.live.posted)}</dd>` : ""}` : ""}
+      ${f.hours ? `<dt>Hours</dt><dd>${esc(f.hours)}</dd>${(f.live || openState(f) === null) ? "" : `<dd class="sub">Open/closed is worked out from the listed hours (Toronto time).</dd>`}` : ""}
+      ${f.details ? `<dt>Where</dt><dd>${esc(f.details)}</dd>` : ""}
+      ${f.extras.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join("")}
       </dl></div>`;
     $("back").onclick = () => { S.sel = null; render(); setSnap(0); };
     return;
@@ -392,14 +503,14 @@ function render() {
     .map(f => [f, dist(f)]).sort((a, b) => a[1] - b[1]).slice(0, 100);
   body.innerHTML = list.length ? list.map(([f, d], i) => `
     <button class="row" data-i="${i}">
-      <div class="ic ${f.kind === "water" ? "water" : "wc"}">${icon(f)}</div>
-      <div class="tx"><div class="nm">${esc(f.name)}</div><div class="sub">${esc(f.address || (f.kind === "water" ? "Drinking water" : "Washroom"))}</div>${openPill(f)} ${pill(f.status)}${f.bottle ? ' <span class="pill green">🚰 Bottle refill</span>' : ""}${f.access ? " ♿" : ""}</div>
-      <div class="dist">${fmt(d)}</div></button>`).join("") + `<div class="foot">${esc(sourceNote)} Map © OpenStreetMap contributors.
-      <details><summary>Debug info</summary>
-      <p>Feed entries with no match (${S.unmatched.length}):<br>${S.unmatched.slice(0, 25).map(esc).join("<br>")}</p>
-      <p><input id="dbgq" placeholder="Type a place name to inspect" style="width:100%;height:40px;padding:0 10px;font-size:16px"></p>
-      <pre id="dbgout" style="white-space:pre-wrap;word-break:break-word;font-size:11px"></pre>
-      <p>Sample map records:<br>${S.items.slice(0, 4).map(f => esc((f.assetId || "no asset id") + " | " + (f.nameKeys.join(" / ") || f.name))).join("<br>")}</p></details></div>`
+    <div class="ic ${f.kind === "water" ? "water" : "wc"}">${icon(f)}</div>
+    <div class="tx"><div class="nm">${esc(f.name)}</div><div class="sub">${esc(f.address || (f.kind === "water" ? "Drinking water" : "Washroom"))}</div>${openPill(f)} ${pill(f.status)}${f.bottle ? ' <span class="pill green">🚰 Bottle refill</span>' : ""}${f.access ? " ♿" : ""}</div>
+    <div class="dist">${fmt(d)}</div></button>`).join("") + `<div class="foot">${esc(sourceNote)} Map © OpenStreetMap contributors.
+    <details><summary>Debug info</summary>
+    <p>Feed entries with no match (${S.unmatched.length}):<br>${S.unmatched.slice(0, 25).map(esc).join("<br>")}</p>
+    <p><input id="dbgq" placeholder="Type a place name to inspect" style="width:100%;height:40px;padding:0 10px;font-size:16px"></p>
+    <pre id="dbgout" style="white-space:pre-wrap;word-break:break-word;font-size:11px"></pre>
+    <p>Sample map records:<br>${S.items.slice(0, 4).map(f => esc((f.assetId || "no asset id") + " | " + (f.nameKeys.join(" / ") || f.name))).join("<br>")}</p></details></div>`
     : `<div class="empty">${S.items.length ? "No matches." : "Loading…"}</div>`;
   const dq = $("dbgq");
   if (dq) dq.oninput = () => {
