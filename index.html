@@ -72,7 +72,7 @@ const DEFAULT = [43.6532, -79.3832];
 const FILTERS = [["all", "All"], ["open", "🟢 Open now"], ["washroom", "🚻 Washrooms"], ["water", "💧 Drinking water"], ["bottle", "🚰 Bottle refill"], ["access", "♿ Accessible"]];
 const SNAPS = [0.32, 0.6, 0.9];
 
-const S = {items: [], filter: "all", q: "", pos: null, sel: null, snap: 0};
+const S = {unmatched: [], items: [], filter: "all", q: "", pos: null, sel: null, snap: 0};
 const $ = id => document.getElementById(id);
 const esc = s => String(s).replace(/[&<>"']/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"}[c]));
 const norm = s => s.toLowerCase().replace(/[^a-z0-9]/g, "");
@@ -182,10 +182,24 @@ async function mergeLive() {
       if (e.AssetName) byName.set(norm(e.AssetName), info);
     }
     let hit = 0;
+    const used = new Set();
     for (const f of S.items) {
       const info = (f.assetId && byId.get(f.assetId)) || f.nameKeys.map(k => byName.get(k)).find(Boolean);
-      if (info) { f.live = info; hit++; }
+      if (info) { f.live = info; used.add(info); hit++; }
     }
+    // Second pass: looser name matching for feed entries that found nothing
+    for (const e of rows) {
+      const info = byId.get(String(e.AssetID)) || byName.get(norm(e.AssetName || ""));
+      if (!info || used.has(info)) continue;
+      const key = norm(e.AssetName || "");
+      if (key.length < 10) continue;
+      for (const f of S.items) {
+        if (f.live) continue;
+        if (f.nameKeys.some(k => k.length >= 10 && (k.includes(key) || key.includes(k)))) { f.live = info; used.add(info); hit++; }
+      }
+    }
+    S.unmatched = rows.filter(e => { const i = byId.get(String(e.AssetID)) || byName.get(norm(e.AssetName || "")); return !i || !used.has(i); })
+      .map(e => `${e.AssetID} | ${e.AssetName} | status ${e.Status}`);
     sourceNote += " City live status matched " + hit + " of " + rows.length + " feed entries.";
     drawMarkers(); if (!S.sel) render();
   } catch (e) {
@@ -332,7 +346,10 @@ function render() {
     <button class="row" data-i="${i}">
       <div class="ic ${f.kind === "water" ? "water" : "wc"}">${icon(f)}</div>
       <div class="tx"><div class="nm">${esc(f.name)}</div><div class="sub">${esc(f.address || (f.kind === "water" ? "Drinking water" : "Washroom"))}</div>${openPill(f)} ${pill(f.status)}${f.bottle ? ' <span class="pill green">🚰 Bottle refill</span>' : ""}${f.access ? " ♿" : ""}</div>
-      <div class="dist">${fmt(d)}</div></button>`).join("") + `<div class="foot">${esc(sourceNote)} Map © OpenStreetMap contributors.</div>`
+      <div class="dist">${fmt(d)}</div></button>`).join("") + `<div class="foot">${esc(sourceNote)} Map © OpenStreetMap contributors.
+      <details><summary>Debug info</summary>
+      <p>Feed entries with no match (${S.unmatched.length}):<br>${S.unmatched.slice(0, 25).map(esc).join("<br>")}</p>
+      <p>Sample map records:<br>${S.items.slice(0, 4).map(f => esc((f.assetId || "no asset id") + " | " + (f.nameKeys.join(" / ") || f.name))).join("<br>")}</p></details></div>`
     : `<div class="empty">${S.items.length ? "No matches." : "Loading…"}</div>`;
   body.querySelectorAll(".row").forEach(b => b.onclick = () => select(list[+b.dataset.i][0]));
 }
