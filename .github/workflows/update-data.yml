@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Download City of Toronto Open Data & Live Status
+      - name: Download City of Toronto Open Data
         run: |
           mkdir -p data
           CKAN="https://ckan0.cf.opendata.inter.prod-toronto.ca/api/3/action"
@@ -28,109 +28,6 @@ jobs:
           }
           grab washroom washroom-facilities || echo "washroom download failed"
           grab water parks-drinking-fountains || echo "water download failed"
-
-          python3 - << 'PY'
-          import json, re, urllib.request, html
-
-          UA = {"User-Agent": "Mozilla/5.0"}
-
-          def fetch_text(url):
-              req = urllib.request.Request(url, headers=UA)
-              with urllib.request.urlopen(req, timeout=25) as r:
-                  return r.read().decode("utf-8", "replace")
-
-          def fetch_json(url):
-              txt = fetch_text(url)
-              data = json.loads(txt)
-              return data
-
-          # 1) Live washroom feed
-          try:
-              wdata = fetch_json("https://www.toronto.ca/data/parks/live/washroom_allupdates.json")
-              with open("data/live-washroom.json", "w") as f:
-                  json.dump(wdata, f)
-              print("Saved data/live-washroom.json")
-          except Exception as e:
-              print("live-washroom failed:", e)
-
-          # 2) Discover live JSON endpoints from Toronto map & alerts pages
-          pages = [
-              "https://www.toronto.ca/explore-enjoy/parks-recreation/places-spaces/parks-and-recreation-service-alerts/drinking-water-source-closures-service-alerts/",
-              "https://www.toronto.ca/explore-enjoy/parks-recreation/places-spaces/parks-and-recreation-facility-listings/washrooms-and-drinking-water-map/",
-          ]
-          candidates = []
-          alerts_html = ""
-          for p in pages:
-              try:
-                  body = fetch_text(p)
-                  if "drinking-water-source-closures" in p:
-                      alerts_html = body
-                  for m in re.findall(r'(?:https://www\.toronto\.ca)?(/data/parks/live/[A-Za-z0-9_./-]+\.json)', body):
-                      u = "https://www.toronto.ca" + m
-                      if u not in candidates and "washroom_allupdates.json" not in u and "/locations/" not in u:
-                          candidates.append(u)
-              except Exception as e:
-                  print("Page fetch failed:", p, e)
-
-          for name in [
-              "water_allupdates.json",
-              "drinkingwater_allupdates.json",
-              "drinking_water_allupdates.json",
-              "drinkingwater.json",
-              "water.json",
-              "fountains_allupdates.json",
-          ]:
-              u = "https://www.toronto.ca/data/parks/live/" + name
-              if u not in candidates:
-                  candidates.append(u)
-
-          saved_water = False
-          for u in candidates:
-              try:
-                  j = fetch_json(u)
-                  if j:
-                      with open("data/live-water.json", "w") as f:
-                          json.dump(j, f)
-                      print("Saved data/live-water.json from", u)
-                      saved_water = True
-                      break
-              except Exception as e:
-                  print("Candidate skipped:", u, e)
-
-          # 3) Fallback: parse Toronto's Drinking Water Closures & Service Alerts HTML if server-rendered
-          if not saved_water and alerts_html:
-              clean = lambda s: html.unescape(re.sub(r"<[^>]+>", " ", s)).strip()
-              rows = []
-              # Match accordion headings ending in "Closed" or "Alert" and capture following details
-              blocks = re.findall(
-                  r'<button[^>]*>(.*?)</button>\s*(?:</h\d>)?\s*<div[^>]*>(.*?)</div>',
-                  alerts_html,
-                  flags=re.S | re.I,
-              )
-              for title_raw, body_raw in blocks:
-                  title = re.sub(r"\s+", " ", clean(title_raw))
-                  m = re.match(r"^(.*?)\s+(Closed|Alert)$", title, flags=re.I)
-                  if not m:
-                      continue
-                  asset_name, st_word = m.group(1).strip(), m.group(2).lower()
-                  status = 0 if st_word == "closed" else 2
-                  lines = [re.sub(r"\s+", " ", clean(x)) for x in re.split(r"</p>|</li>|<br\s*/?>", body_raw) if clean(x)]
-                  reason = lines[0] if lines else ""
-                  comments = " ".join(lines[1:]) if len(lines) > 1 else ""
-                  rows.append({
-                      "AssetName": asset_name,
-                      "Status": status,
-                      "Reason": reason,
-                      "Comments": comments,
-                  })
-              if rows:
-                  with open("data/live-water.json", "w") as f:
-                      json.dump({"alertsOnly": True, "source": "alerts-html", "rows": rows}, f)
-                  print(f"Saved {len(rows)} rows to data/live-water.json from alerts HTML")
-              else:
-                  print("No server-rendered alert rows found in alerts HTML")
-          PY
-
           ls -l data
       - name: Commit if changed
         run: |
