@@ -186,14 +186,30 @@ const STATUS_SOURCES = [
 ];
 async function portalRows(src) {
   const errs = [];
-  // 1) straight from the Open Data portal (works if the portal allows browser requests)
+  const hasStatus = fs => fs.some(x => x.properties && x.properties.Status != null && x.properties.Status !== "");
+  const keysOf = fs => Object.keys((fs[0] || {}).properties || {}).slice(0, 10).join(",");
+  // 1) straight from the Open Data portal, trying every GeoJSON file, then the data table
   for (const slug of src.slugs) {
     try {
       const meta = await (await fetch(CKAN + slug)).json();
-      const res = meta.result.resources.filter(r => (r.format || "").toLowerCase() === "geojson");
-      const pick = res.find(r => (r.name || "").includes("4326")) || res[0];
-      const gj = await (await fetch(pick.url)).json();
-      return {features: gj.features || [], via: "portal"};
+      const all = meta.result.resources;
+      const geo = all.filter(r => (r.format || "").toLowerCase() === "geojson")
+        .sort((x, y) => (y.name || "").includes("4326") - (x.name || "").includes("4326"));
+      const tables = all.filter(r => r.datastore_active);
+      for (const r of geo.concat(tables)) {
+        const label = r.name || r.format || "resource";
+        try {
+          let fs;
+          if ((r.format || "").toLowerCase() === "geojson") {
+            fs = (await (await fetch(r.url)).json()).features || [];
+          } else {
+            const q = await (await fetch("https://ckan0.cf.opendata.inter.prod-toronto.ca/api/3/action/datastore_search?limit=5000&resource_id=" + r.id)).json();
+            fs = (q.result.records || []).map(rec => ({properties: rec}));
+          }
+          if (hasStatus(fs)) return {features: fs, via: "portal"};
+          errs.push(label + ": no Status column (columns: " + keysOf(fs) + ")");
+        } catch (e) { errs.push(label + ": " + (e.message || e)); }
+      }
     } catch (e) { errs.push(slug + ": " + (e.message || e)); }
   }
   // 2) copy kept on this site, refreshed from the portal by the GitHub workflow
@@ -201,9 +217,10 @@ async function portalRows(src) {
     const r = await fetch(src.file + "?_=" + Date.now());
     if (!r.ok) throw new Error("HTTP " + r.status);
     const modified = r.headers.get("last-modified");
-    const gj = await r.json();
-    return {features: gj.features || [], via: "copy", modified: modified ? new Date(modified).toLocaleString("en-CA", {timeZone: "America/Toronto"}) : ""};
-  } catch (e) { errs.push("copy: " + (e.message || e)); }
+    const fs = (await r.json()).features || [];
+    if (!hasStatus(fs)) throw new Error("no Status column (columns: " + keysOf(fs) + ")");
+    return {features: fs, via: "copy", modified: modified ? new Date(modified).toLocaleString("en-CA", {timeZone: "America/Toronto"}) : ""};
+  } catch (e) { errs.push("site copy: " + (e.message || e)); }
   throw new Error(errs.join(" | "));
 }
 async function mergeLive() {
