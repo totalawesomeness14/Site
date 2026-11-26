@@ -72,7 +72,7 @@ const DEFAULT = [43.6532, -79.3832];
 const FILTERS = [["all", "All"], ["open", "🟢 Open now"], ["washroom", "🚻 Washrooms"], ["water", "💧 Drinking water"], ["bottle", "🚰 Bottle refill"], ["access", "♿ Accessible"]];
 const SNAPS = [0.32, 0.6, 0.9];
 
-const S = {unmatched: [], items: [], filter: "all", q: "", pos: null, sel: null, snap: 0};
+const S = {feedRows: [], unmatched: [], items: [], filter: "all", q: "", pos: null, sel: null, snap: 0};
 const $ = id => document.getElementById(id);
 const esc = s => String(s).replace(/[&<>"']/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"}[c]));
 const norm = s => s.toLowerCase().replace(/[^a-z0-9]/g, "");
@@ -109,6 +109,7 @@ function toItem(f, kind, i) {
   return {
     id: kind + i, kind, lat, lon, address,
     bottle: /bottle|refill|fill(er|ing)/i.test(Object.entries(props).filter(([k]) => /type|categ|alternative|name|detail|descr/i.test(k)).map(([, v]) => v).join(" ")),
+    props,
     assetId: find(["assetid"]),
     nameKeys: Object.entries(props).filter(([k]) => /^(name|location|alternative_?name|asset_?name)$/i.test(k)).map(([, v]) => norm(v)),
     live: null,
@@ -191,11 +192,12 @@ async function readFeed(url) {
 }
 async function mergeLive() {
   const notes = [];
-  S.unmatched = [];
+  S.unmatched = []; S.feedRows = [];
   for (const url of LIVE_FEEDS) {
     const label = url.split("/").pop().replace(".json", "");
     try {
       const rows = await readFeed(url);
+      S.feedRows.push(...rows.map(e => ({feed: label, ...e})));
       const byId = new Map(), byName = new Map();
       for (const e of rows) {
         const info = {status: Number(e.Status), reason: e.Reason || "", comments: e.Comments || "", posted: e.PostedDate || ""};
@@ -366,8 +368,19 @@ function render() {
       <div class="dist">${fmt(d)}</div></button>`).join("") + `<div class="foot">${esc(sourceNote)} Map © OpenStreetMap contributors.
       <details><summary>Debug info</summary>
       <p>Feed entries with no match (${S.unmatched.length}):<br>${S.unmatched.slice(0, 25).map(esc).join("<br>")}</p>
+      <p><input id="dbgq" placeholder="Type a place name to inspect" style="width:100%;height:40px;padding:0 10px;font-size:16px"></p>
+      <pre id="dbgout" style="white-space:pre-wrap;word-break:break-word;font-size:11px"></pre>
       <p>Sample map records:<br>${S.items.slice(0, 4).map(f => esc((f.assetId || "no asset id") + " | " + (f.nameKeys.join(" / ") || f.name))).join("<br>")}</p></details></div>`
     : `<div class="empty">${S.items.length ? "No matches." : "Loading…"}</div>`;
+  const dq = $("dbgq");
+  if (dq) dq.oninput = () => {
+    const q = norm(dq.value);
+    const out = $("dbgout");
+    if (q.length < 3) { out.textContent = ""; return; }
+    const hits = S.items.filter(f => norm(JSON.stringify(f.props)).includes(q)).slice(0, 3).map(f => "MAP: " + JSON.stringify(f.props));
+    const feed = S.feedRows.filter(e => norm(JSON.stringify(e)).includes(q)).slice(0, 3).map(e => "FEED: " + JSON.stringify(e));
+    out.textContent = (hits.concat(feed).join("\n\n")) || "No match in map data or live feeds (" + S.items.length + " map records, " + S.feedRows.length + " feed rows loaded).";
+  };
   body.querySelectorAll(".row").forEach(b => b.onclick = () => select(list[+b.dataset.i][0]));
 }
 
