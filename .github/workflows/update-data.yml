@@ -27,10 +27,7 @@ jobs:
             return 1
           }
           grab washroom washroom-facilities || echo "washroom download failed"
-          grab water parks-drinking-water-source parks-and-recreation-drinking-water-source drinking-water-sources || {
-            echo "Water dataset not found. Similar datasets:"
-            curl -fsSL "$CKAN/package_search?q=drinking+water+fountain&rows=20" | jq -r '.result.results[] | .name + " | " + .title'
-          }
+          grab water parks-drinking-fountains || echo "water download failed"
           ls -l data
       - name: Commit if changed
         run: |
