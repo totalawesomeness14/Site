@@ -13,16 +13,24 @@ jobs:
       - name: Download City of Toronto Open Data
         run: |
           mkdir -p data
+          rm -f data/water.geojson
           CKAN="https://ckan0.cf.opendata.inter.prod-toronto.ca/api/3/action"
-          grab() { # $1 = output name, rest = dataset slugs to try
+          grab() {
             out=$1; shift
             for slug in "$@"; do
               echo "Trying $slug"
               curl -fsSL "$CKAN/package_show?id=$slug" -o meta.json || continue
-              url=$(jq -r '[.result.resources[] | select((.format|ascii_downcase)=="geojson")] as $g | ((($g | map(select(.name|contains("4326")))) | first) // $g[0]) | .url' meta.json)
-              if [ -n "$url" ] && [ "$url" != "null" ] && curl -fsSL "$url" -o "data/$out.tmp"; then
-                mv "data/$out.tmp" "data/$out.geojson"; echo "Saved $out from $slug"; return 0
-              fi
+              jq -r '.result.resources[] | "\(.format) | \(.name) | \(.url)"' meta.json
+              jq -r '[.result.resources[] | select((.format|ascii_downcase)=="geojson")] | sort_by(((.name // "")|contains("4326"))|not) | .[].url' meta.json > urls.txt
+              while read -r url; do
+                [ -n "$url" ] || continue
+                curl -fsSL "$url" -o cand.json || continue
+                if jq -e '[.features[]?.properties | has("Status")] | any' cand.json > /dev/null; then
+                  mv cand.json "data/$out.geojson"; echo "Saved $out from $url"; return 0
+                else
+                  echo "No Status column in $url"; jq -c '.features[0].properties | keys' cand.json
+                fi
+              done < urls.txt
             done
             return 1
           }
@@ -33,5 +41,5 @@ jobs:
         run: |
           git config user.name "github-actions"
           git config user.email "actions@github.com"
-          git add data
+          git add -A data
           git diff --staged --quiet || (git commit -m "Update status data" && git push)
