@@ -168,44 +168,62 @@ async function loadArcGIS() {
   return items;
 }
 
+const PARTIAL = /\b(east|west|north|south|men|women|male|female|girls|boys|accessible|universal|stall|stalls|sink|sinks|one|single|partial|some|except|only|upper|lower|left|right|side)\b/i;
+function liveClosed(L) {           // true when the City's alert means the whole place is closed
+  if (L.status === 0) return true;
+  if (L.status !== 2) return false;
+  const t = (L.reason + " " + L.comments).toLowerCase();
+  if (/closed for the season|seasonal|out of service|not (yet )?open/.test(t)) return true;
+  return /closed/.test(t) && !/\bopen\b/.test(t) && !PARTIAL.test(t);
+}
 // The City's live status feed: Status 0 = closed, 1 = open, 2 = service alert.
+const LIVE_FEEDS = [
+  LIVE_STATUS,
+  "https://www.toronto.ca/data/parks/live/dws_allupdates.json",
+  "https://www.toronto.ca/data/parks/live/drinkingwater_allupdates.json",
+  "https://www.toronto.ca/data/parks/live/fountain_allupdates.json"
+];
+async function readFeed(url) {
+  const r = await fetch(url + "?_=" + Date.now());
+  if (!r.ok) throw new Error("HTTP " + r.status);
+  const j = await r.json();
+  return Array.isArray(j) ? j : (j.locations || Object.values(j).find(Array.isArray) || []);
+}
 async function mergeLive() {
-  try {
-    const r = await fetch(LIVE_STATUS + "?_=" + Date.now());
-    if (!r.ok) throw new Error("HTTP " + r.status);
-    const j = await r.json();
-    const rows = Array.isArray(j) ? j : (j.locations || Object.values(j).find(Array.isArray) || []);
-    const byId = new Map(), byName = new Map();
-    for (const e of rows) {
-      const info = {status: Number(e.Status), reason: e.Reason || "", comments: e.Comments || "", posted: e.PostedDate || ""};
-      if (e.AssetID != null) byId.set(String(e.AssetID), info);
-      if (e.AssetName) byName.set(norm(e.AssetName), info);
-    }
-    let hit = 0;
-    const used = new Set();
-    for (const f of S.items) {
-      const info = (f.assetId && byId.get(f.assetId)) || f.nameKeys.map(k => byName.get(k)).find(Boolean);
-      if (info) { f.live = info; used.add(info); hit++; }
-    }
-    // Second pass: looser name matching for feed entries that found nothing
-    for (const e of rows) {
-      const info = byId.get(String(e.AssetID)) || byName.get(norm(e.AssetName || ""));
-      if (!info || used.has(info)) continue;
-      const key = norm(e.AssetName || "");
-      if (key.length < 10) continue;
-      for (const f of S.items) {
-        if (f.live) continue;
-        if (f.nameKeys.some(k => k.length >= 10 && (k.includes(key) || key.includes(k)))) { f.live = info; used.add(info); hit++; }
+  const notes = [];
+  S.unmatched = [];
+  for (const url of LIVE_FEEDS) {
+    const label = url.split("/").pop().replace(".json", "");
+    try {
+      const rows = await readFeed(url);
+      const byId = new Map(), byName = new Map();
+      for (const e of rows) {
+        const info = {status: Number(e.Status), reason: e.Reason || "", comments: e.Comments || "", posted: e.PostedDate || ""};
+        if (e.AssetID != null) byId.set(String(e.AssetID), info);
+        if (e.AssetName) byName.set(norm(e.AssetName), info);
       }
+      const used = new Set();
+      for (const f of S.items) {
+        const info = (f.assetId && byId.get(f.assetId)) || f.nameKeys.map(k => byName.get(k)).find(Boolean);
+        if (info) { f.live = info; used.add(info); }
+      }
+      for (const e of rows) {                       // looser name pass
+        const info = byId.get(String(e.AssetID)) || byName.get(norm(e.AssetName || ""));
+        const key = norm(e.AssetName || "");
+        if (!info || used.has(info) || key.length < 10) continue;
+        for (const f of S.items) {
+          if (!f.live && f.nameKeys.some(k => k.length >= 10 && (k.includes(key) || key.includes(k)))) { f.live = info; used.add(info); }
+        }
+      }
+      const miss = rows.filter(e => { const i = byId.get(String(e.AssetID)) || byName.get(norm(e.AssetName || "")); return !i || !used.has(i); });
+      S.unmatched.push(...miss.map(e => `[${label}] ${e.AssetID} | ${e.AssetName} | status ${e.Status}`));
+      notes.push(label + ": " + used.size + "/" + rows.length + " matched");
+    } catch (e) {
+      notes.push(label + ": " + (url === LIVE_STATUS ? "can’t be read (" + (e.message || e) + ")" : "not available"));
     }
-    S.unmatched = rows.filter(e => { const i = byId.get(String(e.AssetID)) || byName.get(norm(e.AssetName || "")); return !i || !used.has(i); })
-      .map(e => `${e.AssetID} | ${e.AssetName} | status ${e.Status}`);
-    sourceNote += " City live status matched " + hit + " of " + rows.length + " feed entries.";
-    drawMarkers(); if (!S.sel) render();
-  } catch (e) {
-    sourceNote += " The City’s live status feed couldn’t be read (" + (e.message || e) + "), so open/closed uses posted hours.";
-    if (!S.sel) render();
   }
+  sourceNote += " Live status — " + notes.join("; ") + ".";
+  drawMarkers(); if (!S.sel) render();
 }
 
 async function load() {
@@ -257,9 +275,8 @@ function dayOK(seg, day) {
 const TIME_RE = /(\d{1,2})(?::(\d{2}))?\s*([ap])?\.?m?\.?\s*(?:to|-|–|—|until)\s*(\d{1,2})(?::(\d{2}))?\s*([ap])\.?m\.?/gi;
 function openState(f) {            // true = open, false = closed, null = unknown
   if (f.live) {
-    if (f.live.status === 0) return false;
-    if (f.live.status === 1) return true;
-    if (f.live.status === 2) return !/closed for the season|seasonal/i.test(f.live.reason);
+    if (liveClosed(f.live)) return false;
+    return true;
   }
   if (f.status && /closed|out of service|not available/i.test(f.status)) return false;
   const t = (f.hours || "").toLowerCase().replace(/noon/g, "12 p.m.").replace(/midnight/g, "12 a.m.");
@@ -287,8 +304,8 @@ function openState(f) {            // true = open, false = closed, null = unknow
 }
 const openPill = f => {
   const L = f.live;
+  if (L && liveClosed(L)) return '<span class="pill red">Closed</span>';
   if (L && L.status === 2) return '<span class="pill orange">Service alert</span>';
-  if (L && L.status === 0) return '<span class="pill red">Closed</span>';
   if (L && L.status === 1) return '<span class="pill green">Open</span>';
   const s = openState(f); return s === true ? '<span class="pill green">Open now</span>' : s === false ? '<span class="pill red">Closed now</span>' : ""; };
 
