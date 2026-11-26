@@ -1,0 +1,40 @@
+name: Update status data
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "15 */6 * * *"
+permissions:
+  contents: write
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download City of Toronto Open Data
+        run: |
+          mkdir -p data
+          CKAN="https://ckan0.cf.opendata.inter.prod-toronto.ca/api/3/action"
+          grab() { # $1 = output name, rest = dataset slugs to try
+            out=$1; shift
+            for slug in "$@"; do
+              echo "Trying $slug"
+              curl -fsSL "$CKAN/package_show?id=$slug" -o meta.json || continue
+              url=$(jq -r '[.result.resources[] | select((.format|ascii_downcase)=="geojson")] as $g | ((($g | map(select(.name|contains("4326")))) | first) // $g[0]) | .url' meta.json)
+              if [ -n "$url" ] && [ "$url" != "null" ] && curl -fsSL "$url" -o "data/$out.tmp"; then
+                mv "data/$out.tmp" "data/$out.geojson"; echo "Saved $out from $slug"; return 0
+              fi
+            done
+            return 1
+          }
+          grab washroom washroom-facilities || echo "washroom download failed"
+          grab water parks-drinking-water-source parks-and-recreation-drinking-water-source drinking-water-sources || {
+            echo "Water dataset not found. Similar datasets:"
+            curl -fsSL "$CKAN/package_search?q=drinking+water+fountain&rows=20" | jq -r '.result.results[] | .name + " | " + .title'
+          }
+          ls -l data
+      - name: Commit if changed
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git add data
+          git diff --staged --quiet || (git commit -m "Update status data" && git push)
