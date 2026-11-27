@@ -2,9 +2,12 @@ name: Update status data
 on:
   workflow_dispatch:
   schedule:
-    - cron: "10 * * * *"
+    - cron: "15 */6 * * *"
 permissions:
   contents: write
+concurrency:
+  group: data-commit
+  cancel-in-progress: false
 jobs:
   fetch:
     runs-on: ubuntu-latest
@@ -33,85 +36,10 @@ jobs:
           }
           grab washroom Status washroom-facilities || echo "washroom download failed"
           grab water Status parks-drinking-fountains || echo "water download failed"
-          grab libraries "" library-branch-general-information || echo "libraries download failed"
           ls -l data
-      - name: Fetch Toronto Public Library hours
-        continue-on-error: true
-        run: |
-          mkdir -p data
-          python3 - <<'PYEOF'
-          import re, json, html as H, urllib.request, datetime as dt, sys
-          from zoneinfo import ZoneInfo
-          TZ = ZoneInfo("America/Toronto")
-          URL = "https://tpl.bibliocommons.com/v2/locations"
-          now = dt.datetime.now(TZ)
-          if len(sys.argv) > 1:                       # test mode: read a local file
-              page = open(sys.argv[1], encoding="utf-8").read()
-          else:
-              req = urllib.request.Request(URL, headers={"User-Agent": "Mozilla/5.0 (compatible; WashroomFinder/1.0)", "Accept-Language": "en-CA"})
-              page = urllib.request.urlopen(req, timeout=60).read().decode("utf-8", "replace")
-
-          DAYS = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
-          STATUS = re.compile(r"(Open(?: today)? until|Closed until|Closed)\s*(?:(\d{1,2})(?::(\d{2}))?\s*([ap])\.?m\.?)?\s*(today|tomorrow|" + "|".join(DAYS) + r")?", re.I)
-
-          def at(date, h, m, ap):
-              h = h % 12 + (12 if ap == "p" else 0)
-              return dt.datetime(date.year, date.month, date.day, h, m, tzinfo=TZ)
-
-          def build(m, text):
-              kind, h, mi, ap, day = m.group(1).lower(), m.group(2), m.group(3), (m.group(4) or "").lower(), (m.group(5) or "").lower()
-              out = {"state": "open" if kind.startswith("open") else "closed", "until": None,
-                     "raw": text[m.start():m.end()].strip(), "_start": m.start()}
-              if h:
-                  h, mi = int(h), int(mi or 0)
-                  if out["state"] == "open":
-                      out["until"] = at(now.date(), h, mi, ap).isoformat()
-                  else:
-                      for i in range(0, 8):
-                          d = now.date() + dt.timedelta(days=i)
-                          ok = (not day) or day == "today" and i == 0 or day == "tomorrow" and i == 1 or day in DAYS and DAYS[d.weekday()] == day
-                          if ok and at(d, h, mi, ap) > now:
-                              out["until"] = at(d, h, mi, ap).isoformat()
-                              break
-              return out
-
-          def parse(text):
-              # A branch name can contain "Closed" (e.g. "Brentwood - Closed"), so prefer a match that carries a time
-              ms = list(STATUS.finditer(text))
-              if not ms:
-                  return None
-              timed = [m for m in ms if m.group(2)]
-              return build(timed[0] if timed else ms[-1], text)
-
-          # every place a branch link appears, in page order
-          hits = [(m.start(), m.group(1)) for m in re.finditer(r"/locations/([A-Za-z0-9]+)(?=[\"'/?#])", page)]
-          firsts = {}
-          for pos, code in hits:
-              firsts.setdefault(code, max(page.rfind("<", 0, pos), 0))
-          order = sorted(firsts.items(), key=lambda kv: kv[1])
-          branches = []
-          for i, (code, pos) in enumerate(order):
-              end = order[i + 1][1] if i + 1 < len(order) else pos + 3000
-              seg = page[pos:min(end, pos + 3000)]
-              text = H.unescape(re.sub(r"<[^>]+>", " ", re.sub(r"(?s)<(script|style).*?</\1>", " ", seg)))
-              text = re.sub(r"\s+", " ", text).strip()
-              st = parse(text)
-              if not st:
-                  continue
-              name = re.sub(r"Location alert for .*? location\.?\s*(Expands popover\.?)?", "", text[:st["_start"]]).strip(" \"'>-")
-              half = len(name) // 2
-              if half and name[:half].strip() == name[half:].strip():
-                  name = name[:half].strip()
-              branches.append({"code": code, "name": name, "state": st["state"], "until": st["until"], "raw": st["raw"],
-                               "alert": "Location alert" in text})
-
-          out = {"generated": now.isoformat(), "source": URL, "branches": branches}
-          json.dump(out, open("data/library-status.json" if len(sys.argv) < 2 else "/dev/stdout", "w"), indent=1)
-          print(f"\nparsed {len(branches)} branches", file=sys.stderr)
-          PYEOF
       - name: Commit if changed
         run: |
           git config user.name "github-actions"
           git config user.email "actions@github.com"
           git add -A data
-          git diff --staged --quiet || (git commit -m "Update status data" && git push)
+          git diff --staged --quiet || (git commit -m "Update status data" && git pull --rebase && git push)
