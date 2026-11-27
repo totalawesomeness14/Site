@@ -79,8 +79,8 @@ const esc = s => String(s).replace(/[&<>"']/g, c => ({"&": "&amp;", "<": "&lt;",
 const norm = s => s.toLowerCase().replace(/[^a-z0-9]/g, "");
 
 /* ---------- Map ---------- */
-const map = L.map("map", {zoomControl: false, attributionControl: true}).setView(DEFAULT, 12);
-L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {maxZoom: 19, attribution: "© OpenStreetMap"}).addTo(map);
+const map = L.map("map", {zoomControl: false, attributionControl: true, preferCanvas: true, zoomSnap: 0, zoomDelta: 0.5, wheelPxPerZoomLevel: 120, bounceAtZoomLimits: false}).setView(DEFAULT, 12);
+L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {maxZoom: 19, attribution: "© OpenStreetMap", updateWhenZooming: false, keepBuffer: 4}).addTo(map);
 const layer = L.layerGroup().addTo(map);
 map.on("click", () => { if (S.sel) { S.sel = null; render(); setSnap(0); } });
 let me = null;
@@ -534,7 +534,7 @@ $("chips").onclick = e => {
 };
 $("search").oninput = e => { S.q = e.target.value; S.sel = null; render(); };
 let preSnap = 0;
-$("search").onfocus = () => { preSnap = S.snap; setSnap(1); };
+$("search").onfocus = () => { preSnap = S.snap === 2 ? 1 : S.snap; setSnap(2); };
 $("search").onblur = () => setSnap(preSnap);
 $("search").onkeydown = e => { if (e.key === "Enter") e.target.blur(); };
 
