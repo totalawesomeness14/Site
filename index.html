@@ -366,15 +366,15 @@ function render() {
   const body = $("body");
   if (S.sel) {
     const f = S.sel;
-    const dirs = `https://www.google.com/maps/dir/?api=1&destination=${f.lat},${f.lon}&travelmode=walking`;
+    const dirs = `https://maps.apple.com/?ll=${f.lat},${f.lon}&q=${encodeURIComponent(f.name)}`;
     const apple = `https://maps.apple.com/?daddr=${f.lat},${f.lon}&dirflg=w`;
     body.innerHTML = `<div class="detail">
       <button class="back" id="back">‹ Back to list</button>
       <div class="sub">${icon(f)} ${f.kind === "water" ? "Drinking water" : "Washroom"} · ${fmt(dist(f))} away</div>
       <h2>${esc(f.name)}</h2>
       ${openPill(f)} ${pill(f.status)} ${f.bottle ? '<span class="pill green">🚰 Bottle refill</span>' : ""} ${f.access ? '<span class="pill green">♿ Accessible</span>' : ""}
-      <div class="btns"><a class="btn" href="${apple}">Directions</a>
-      <a class="btn alt" href="${dirs}">Google Maps</a>
+      <div class="btns"><a class="btn" href="${apple}">Walking directions</a>
+      <a class="btn alt" href="${dirs}">Apple Maps</a>
       ${f.url && /^https?:/.test(f.url) ? `<a class="btn alt" href="${esc(f.url)}">Website</a>` : ""}</div>
       <dl>
         ${f.address ? `<dt>Address</dt><dd>${esc(f.address)}</dd>` : ""}
