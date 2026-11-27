@@ -9,8 +9,8 @@
 <meta name="theme-color" content="#4f46e5">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css">
 <style>
-:root{--bg:#fff;--fg:#111827;--muted:#6b7280;--line:#e5e7eb;--chip:#fff;--accent:#4f46e5;--wc:#4f46e5;--water:#0284c7;--lib:#d97706}
-@media (prefers-color-scheme:dark){:root{--bg:#1c1c1e;--fg:#f3f4f6;--muted:#9ca3af;--line:#3a3a3c;--chip:#2c2c2e;--accent:#818cf8;--wc:#818cf8;--water:#38bdf8;--lib:#fbbf24}}
+:root{--bg:#fff;--fg:#111827;--muted:#6b7280;--line:#e5e7eb;--chip:#fff;--accent:#4f46e5;--wc:#4f46e5;--water:#0284c7}
+@media (prefers-color-scheme:dark){:root{--bg:#1c1c1e;--fg:#f3f4f6;--muted:#9ca3af;--line:#3a3a3c;--chip:#2c2c2e;--accent:#818cf8;--wc:#818cf8;--water:#38bdf8}}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html{-webkit-text-size-adjust:100%}
 html,body{margin:0;height:100%;overflow:hidden;overscroll-behavior:none;font:16px/1.35 -apple-system,system-ui,Segoe UI,Roboto,sans-serif;color:var(--fg);background:var(--bg)}
@@ -33,7 +33,7 @@ html,body{margin:0;height:100%;overflow:hidden;overscroll-behavior:none;font:16p
 #body{flex:1;overflow-y:auto;overscroll-behavior:contain;padding-bottom:calc(env(safe-area-inset-bottom) + 12px)}
 .row{display:flex;gap:12px;align-items:center;width:100%;min-height:64px;padding:10px 14px;border:0;border-bottom:1px solid var(--line);background:none;color:inherit;font:inherit;text-align:left}
 .ic{flex:none;width:40px;height:40px;border-radius:50%;display:grid;place-items:center;color:#fff;font-size:20px}
-.wc{background:var(--wc)}.water{background:var(--water)}.lib{background:var(--lib)}
+.wc{background:var(--wc)}.water{background:var(--water)}
 .tx{flex:1;min-width:0}
 .nm{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .sub{font-size:14px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -73,7 +73,7 @@ const SOURCES = [
   {kind: "water", slugs: ["parks-drinking-fountains"]}
 ];
 const DEFAULT = [43.6532, -79.3832];
-const FILTERS = [["all", "All"], ["washroom", "🚻 Washrooms"], ["water", "💧 Drinking water"], ["bottle", "🚰 Bottle refill"], ["library", "📚 Libraries"], ["access", "♿ Accessible"]];
+const FILTERS = [["all", "All"], ["washroom", "🚻 Washrooms"], ["water", "💧 Drinking water"], ["bottle", "🚰 Bottle refill"], ["access", "♿ Accessible"]];
 const SNAPS = [0.32, 0.6, 0.9];
 
 const S = {openOnly: false, feedRows: [], unmatched: [], items: [], filter: "all", q: "", pos: null, sel: null, snap: 0};
@@ -89,7 +89,7 @@ map.on("click", () => { if (S.sel) { S.sel = null; render(); setSnap(0); } });
 let me = null;
 
 /* ---------- Data ---------- */
-function toItemBase(f, kind, i) {
+function toItem(f, kind, i) {
   const decide = kind === "auto";
   let c = f.geometry && f.geometry.coordinates;
   while (Array.isArray(c) && Array.isArray(c[0])) c = c[0];
@@ -132,50 +132,6 @@ function toItemBase(f, kind, i) {
   };
 }
 
-
-function toItem(f, kind, i) {
-  const it = toItemBase(f, kind, i);
-  if (!it || kind !== "library") return it;
-  const p = it.props;
-  const get = ks => { for (const w of ks) for (const k in p) if (norm(k) === w) return p[k]; return null; };
-  if (["0", "false", "no"].includes(String(get(["physicalbranch"]) ?? "1").toLowerCase())) return null;   // skip non-physical branches
-  let name = get(["branchname", "name"]) || it.name;
-  if (!/library/i.test(name)) name += " Library";
-  let url = get(["website", "url"]);
-  if (url && !/^https?:/i.test(url)) url = "https://" + url.replace(/^\/+/, "");
-  const postal = get(["postalcode"]);
-  Object.assign(it, {
-    id: "library" + i, name, url, hours: get(["hours"]), wc: get(["publicwashroom"]), extras: [], status: null, access: false, bottle: false,
-    phone: get(["telephone", "phone"]),
-    code: get(["branchcode", "code"]),
-    lib: null,
-    address: [it.address, postal].filter(Boolean).join(", ") || null
-  });
-  return it;
-}
-
-
-const LIB = {slug: "library-branch-general-information", file: "data/libraries.geojson"};
-async function loadLibraries() {
-  const errs = [];
-  const conv = gj => (gj.features || []).map((f, i) => toItem(f, "library", i)).filter(Boolean);
-  try {   // copy kept on this site (refreshed by the GitHub workflow)
-    const r = await fetch(LIB.file + "?_=" + Date.now());
-    if (!r.ok) throw new Error("site copy HTTP " + r.status);
-    const it = conv(await r.json());
-    if (it.length) return it;
-    throw new Error("site copy has no usable branches");
-  } catch (e) { errs.push(e.message || e); }
-  try {   // straight from the Open Data portal
-    const meta = await (await fetch(CKAN + LIB.slug)).json();
-    const res = meta.result.resources.filter(r => (r.format || "").toLowerCase() === "geojson");
-    const pick = res.find(r => (r.name || "").includes("4326")) || res[0];
-    const it = conv(await (await fetch(pick.url)).json());
-    if (it.length) return it;
-    throw new Error("portal file has no usable branches");
-  } catch (e) { errs.push("portal: " + (e.message || e)); }
-  throw new Error(errs.join(" | "));
-}
 
 async function loadKind(src) {
   const errs = [];
@@ -307,24 +263,6 @@ async function mergeLive() {
   drawMarkers(); if (!S.sel) render();
 }
 
-function dropLibraryDuplicates(items) {
-  const libs = items.filter(f => f.kind === "library");
-  if (!libs.length) return {items, dropped: 0};
-  const meters = (a, b) => {
-    const r = Math.PI / 180, x = Math.sin((b.lat - a.lat) * r / 2) ** 2 + Math.cos(a.lat * r) * Math.cos(b.lat * r) * Math.sin((b.lon - a.lon) * r / 2) ** 2;
-    return 12742000 * Math.asin(Math.sqrt(x));
-  };
-  let dropped = 0;
-  const kept = items.filter(f => {
-    if (f.kind === "library") return true;
-    const text = Object.values(f.props || {}).join(" ");
-    if (!/librar|\btpl\b|torontopubliclibrary/i.test(text)) return true;       // not described as a library
-    if (!libs.some(l => meters(f, l) < 300)) return true;                         // and not next to a library branch
-    dropped++; return false;
-  });
-  return {items: kept, dropped};
-}
-
 async function load() {
   toast("Loading…");
   const why = [];
@@ -341,14 +279,9 @@ async function load() {
   } else toast("");
   const w = items.filter(f => f.kind === "washroom").length, d = items.filter(f => f.kind === "water").length;
   sourceNote += " " + w + " washrooms, " + d + " drinking water.";
-  try { const libs = await loadLibraries(); items = items.concat(libs); sourceNote += " " + libs.length + " libraries."; }
-  catch (e) { sourceNote += " Libraries unavailable (" + (e.message || e) + ")."; }
-  const dd = dropLibraryDuplicates(items); items = dd.items;
-  if (dd.dropped) sourceNote += " Merged " + dd.dropped + " library washroom/fountain entries into their libraries.";
   S.items = items;
   drawMarkers(); render();
   mergeLive();
-  mergeLibraries();
 }
 $("toast").onclick = () => { if ($("toast").textContent.includes("retry")) load(); };
 function toast(t) { const el = $("toast"); el.textContent = t; el.style.display = t ? "block" : "none"; }
@@ -377,41 +310,7 @@ function dayOK(seg, day) {
   return inRange(day, a, b);
 }
 const TIME_RE = /(\d{1,2})(?::(\d{2}))?\s*([ap])?\.?m?\.?\s*(?:to|-|–|—|until)\s*(\d{1,2})(?::(\d{2}))?\s*([ap])\.?m\.?/gi;
-/* ---------- Library hours (from the library's own listing, refreshed by the workflow) ---------- */
-function libOpen(f) {
-  const L = f.lib; if (!L) return null;
-  const now = Date.now(), gen = Date.parse(L.generated), until = L.until ? Date.parse(L.until) : null;
-  if (!gen || now - gen > 8 * 3600e3) return null;              // data too old to trust
-  if (L.state === "open") return until && now >= until ? false : true;
-  if (until && now >= until) return null;                       // should have opened by now; wait for the next refresh
-  return false;
-}
-async function mergeLibraries() {
-  if (!S.items.some(f => f.kind === "library")) return;
-  try {
-    const r = await fetch("data/library-status.json?_=" + Date.now());
-    if (!r.ok) throw new Error("HTTP " + r.status);
-    const j = await r.json();
-    const byCode = new Map(), byName = new Map();
-    const nk = n => norm(String(n || "").replace(/library/ig, "").replace(/- closed/ig, ""));
-    for (const b of j.branches || []) { const info = {...b, generated: j.generated}; byCode.set(String(b.code).toUpperCase(), info); byName.set(nk(b.name), info); }
-    let hit = 0, libs = 0;
-    for (const f of S.items) {
-      if (f.kind !== "library") continue;
-      libs++;
-      const info = (f.code && byCode.get(String(f.code).toUpperCase())) || byName.get(nk(f.name));
-      if (info) { f.lib = info; hit++; }
-    }
-    sourceNote += " Library hours: " + hit + "/" + libs + " matched (as of " + new Date(j.generated).toLocaleString("en-CA", {timeZone: "America/Toronto", dateStyle: "medium", timeStyle: "short"}) + ").";
-    drawMarkers(); if (!S.sel) render();
-  } catch (e) {
-    sourceNote += " Library hours unavailable (" + (e.message || e) + ").";
-    if (!S.sel) render();
-  }
-}
-
 function openState(f) {
-  if (f.kind === "library") { const r = libOpen(f); if (r !== null) return r; }   // true = open, false = closed, null = unknown
   if (f.live) {
     if (liveClosed(f.live)) return false;
     return true;
@@ -442,11 +341,6 @@ function openState(f) {
   return null;
 }
 const openPill = f => {
-  if (f.kind === "library") {
-    const st = openState(f);
-    return (st === true ? '<span class="pill green">Open now</span>' : st === false ? '<span class="pill red">Closed now</span>' : "")
-      + (f.lib && f.lib.alert ? ' <span class="pill orange">Alert</span>' : "");
-  }
   const L = f.live;
   if (L && liveClosed(L)) return '<span class="pill red">' + (/season/i.test(L.reason) ? 'Closed for the season' : 'Closed') + '</span>';
   if (L && L.status === 2) return '<span class="pill orange">Service alert</span>';
@@ -468,17 +362,17 @@ function dist(f) {
 }
 const fmt = m => m < 1000 ? Math.round(m / 10) * 10 + " m" : (m / 1000).toFixed(1) + " km";
 const pill = s => { if (!s) return ""; const t = s.toLowerCase(); const c = /closed|out of service/.test(t) ? "red" : /open/.test(t) ? "green" : "orange"; return `<span class="pill ${c}">${esc(s)}</span>`; };
-const icon = f => f.kind === "water" ? "💧" : f.kind === "library" ? "📚" : "🚻";
-const kindLabel = f => f.kind === "water" ? "Drinking water" : f.kind === "library" ? "Library" : "Washroom";
-const kindClass = f => f.kind === "water" ? "water" : f.kind === "library" ? "lib" : "wc";
-const inCategory = f => S.filter === "all" || (S.filter === "access" ? f.access : S.filter === "bottle" ? f.bottle : S.filter === "washroom" ? (f.kind === "washroom" || f.kind === "library") : S.filter === "water" ? (f.kind === "water" || f.kind === "library") : f.kind === S.filter);
+const icon = f => f.kind === "water" ? "💧" : "🚻";
+const kindLabel = f => f.kind === "water" ? "Drinking water" : "Washroom";
+const kindClass = f => f.kind === "water" ? "water" : "wc";
+const inCategory = f => S.filter === "all" || (S.filter === "access" ? f.access : S.filter === "bottle" ? f.bottle : f.kind === S.filter);
 const visible = () => S.items.filter(f => inCategory(f) && (!S.openOnly || openState(f) === true));
 
 /* ---------- Rendering ---------- */
 function drawMarkers() {
   layer.clearLayers();
   for (const f of visible()) {
-    const css = getComputedStyle(document.documentElement).getPropertyValue(f.kind === "water" ? "--water" : f.kind === "library" ? "--lib" : "--wc").trim();
+    const css = getComputedStyle(document.documentElement).getPropertyValue(f.kind === "water" ? "--water" : "--wc").trim();
     const st = openState(f);
     L.circleMarker([f.lat, f.lon], {radius: 9, color: "#fff", weight: 2, fillColor: st === false ? "#9ca3af" : css, fillOpacity: st === false ? .7 : 1, bubblingMouseEvents: false})
       .on("click", () => select(f)).addTo(layer);
@@ -500,9 +394,6 @@ function render() {
       <a class="btn alt" href="${dirs}">Google Maps</a>
       ${f.url && /^https?:/.test(f.url) ? `<a class="btn alt" href="${esc(f.url)}">Website</a>` : ""}</div>
       <dl>
-        ${f.kind === "library" && f.lib ? `<dt>Hours (from the library’s website)</dt><dd>${esc(f.lib.raw)}</dd><dd class="sub">As of ${esc(new Date(f.lib.generated).toLocaleString("en-CA", {timeZone: "America/Toronto", dateStyle: "medium", timeStyle: "short"}))}${f.lib.alert ? ". The library has posted an alert for this branch." : ""}</dd>` : ""}
-        ${f.kind === "library" ? `<dt>Washroom</dt><dd>${f.wc === "1" ? "Public washroom inside the branch, available while it is open." : "Not confirmed in the City’s library data for this branch."}</dd>` : ""}
-        ${f.phone ? `<dt>Phone</dt><dd><a href="tel:${esc(f.phone.replace(/[^0-9+]/g, ""))}">${esc(f.phone)}</a></dd>` : ""}
         ${f.address ? `<dt>Address</dt><dd>${esc(f.address)}</dd>` : ""}
         ${f.live && (f.live.reason || f.live.comments) ? `<dt>City status update</dt><dd>${esc([f.live.reason, f.live.comments].filter(Boolean).join(" — "))}</dd>${f.live.posted ? `<dd class="sub">Posted ${esc(f.live.posted)}</dd>` : ""}` : ""}
         ${f.hours ? `<dt>Hours</dt><dd>${esc(f.hours).replace(/; /g, "<br>")}</dd>${(f.live || openState(f) === null) ? "" : `<dd class="sub">Open/closed is worked out from the listed hours (Toronto time).</dd>`}` : ""}
