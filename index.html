@@ -31,7 +31,7 @@ html,body{margin:0;height:100%;overflow:hidden;overscroll-behavior:none;font:16p
 #sheet.drag{transition:none}
 #handle{padding:10px 0 6px;touch-action:none;cursor:grab}
 #handle i{display:block;width:40px;height:5px;margin:0 auto;border-radius:3px;background:var(--line)}
-#search{margin:0 12px 8px;height:44px;padding:0 14px;border:1px solid var(--line);border-radius:12px;background:var(--chip);color:var(--fg);font-size:16px;font-family:inherit}
+#search{margin:0 12px 8px;height:44px;padding:0 14px;border:1px solid var(--line);border-radius:12px;background:var(--chip);background:color-mix(in srgb,var(--chip) 50%,transparent);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);color:var(--fg);font-size:16px;font-family:inherit}
 #body{flex:1;overflow-y:auto;overscroll-behavior:contain;padding-bottom:calc(env(safe-area-inset-bottom) + 12px)}
 .row{display:flex;gap:12px;align-items:center;width:100%;min-height:64px;padding:10px 14px;border:0;border-bottom:1px solid var(--line);background:none;color:inherit;font:inherit;text-align:left}
 .ic{flex:none;width:40px;height:40px;border-radius:50%;display:grid;place-items:center;color:#fff;font-size:20px}
