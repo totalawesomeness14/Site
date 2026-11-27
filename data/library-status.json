@@ -1,0 +1,806 @@
+{
+ "generated": "2026-11-26T22:46:50.757063-05:00",
+ "source": "https://tpl.bibliocommons.com/v2/locations",
+ "branches": [
+  {
+   "code": "AG",
+   "name": "Agincourt",
+   "state": "closed",
+   "until": "2026-11-27T09:00:00-05:00",
+   "raw": "Closed until 9:00 am Friday",
+   "alert": false
+  },
+  {
+   "code": "ACD",
+   "name": "Albert Campbell",
+   "state": "closed",
+   "until": "2026-11-27T09:00:00-05:00",
+   "raw": "Closed until 9:00 am Friday",
+   "alert": false
+  },
+  {
+   "code": "AB",
+   "name": "Albion",
+   "state": "closed",
+   "until": "2026-11-27T09:00:00-05:00",
+   "raw": "Closed until 9:00 am Friday",
+   "alert": false
+  },
+  {
+   "code": "AD",
+   "name": "Alderwood",
+   "state": "closed",
+   "until": "2026-11-27T10:00:00-05:00",
+   "raw": "Closed until 10:00 am Friday",
+   "alert": false
+  },
+  {
+   "code": "AP",
+   "name": "Amesbury Park",
+   "state": "closed",
+   "until": "2026-11-27T10:00:00-05:00",
+   "raw": "Closed until 10:00 am Friday",
+   "alert": false
+  },
+  {
+   "code": "AN",
+   "name": "Annette Street",
+   "state": "closed",
+   "until": "2026-11-27T09:00:00-05:00",
+   "raw": "Closed until 9:00 am Friday",
+   "alert": false
+  },
+  {
+   "code": "AH",
+   "name": "Armour Heights",
+   "state": "closed",
+   "until": "2026-11-27T10:00:00-05:00",
+   "raw": "Closed until 10:00 am Friday",
+   "alert": false
+  },
+  {
+   "code": "BF",
+   "name": "Barbara Frum",
+   "state": "closed",
+   "until": "2026-11-27T09:00:00-05:00",
+   "raw": "Closed until 9:00 am Friday",
+   "alert": false
+  },
+  {
+   "code": "BE",
+   "name": "Beaches",
+   "state": "closed",
+   "until": "2026-11-27T09:00:00-05:00",
+   "raw": "Closed until 9:00 am Friday",
+   "alert": false
+  },
+  {
+   "code": "BD",
+   "name": "Bendale",
+   "state": "closed",
+   "until": "2026-11-27T10:00:00-05:00",
+   "raw": "Closed until 10:00 am Friday",
+   "alert": true
+  },
+  {
+   "code": "BC",
+   "name": "Black Creek",
+   "state": "closed",
+   "until": "2026-11-27T09:00:00-05:00",
+   "raw": "Closed until 9:00 am Friday",
+   "alert": false
+  },
+  {
+   "code": "BL",
+   "name": "Bloor/Gladstone",
+   "state": "closed",
+   "until": "2026-11-27T09:00:00-05:00",
+   "raw": "Closed until 9:00 am Friday",
+   "alert": true
+  },
+  {
+   "code": "BR",
+   "name": "Brentwood - Closed",
+   "state": "closed",
+   "until": "2026-11-27T09:00:00-05:00",
+   "raw": "Closed until 9:00 am Friday",
+   "alert": true
+  },
+  {
+   "code": "BRW",
+   "name": "Bridlewood",
+   "state": "closed",
+   "until": "2026-11-27T09:00:00-05:00",
+   "raw": "Closed until 9:00 am Friday",
+   "alert": false
+  },
+  {
+   "code": "BB",
+   "name": "Brookbanks",
+   "state": "closed",
+   "until": "2026-11-27T10:00:00-05:00",
+   "raw": "Closed until 10:00 am Friday",
+   "alert": false
+  },
+  {
+   "code": "BUR",
+   "name": "Burrows Hall",
+   "state": "closed",
+   "until": "2026-11-27T09:00:00-05:00",
+   "raw": "Closed until 9:00 am Friday",
+   "alert": false
+  },
+  {
+   "code": "CED",
+   "name": "Cedarbrae",
+   "state": "closed",
+   "until": "2026-11-27T09:00:00-05:00",
+   "raw": "Closed until 9:00 am Friday",
+   "alert": false
+  },
+  {
+   "code": "CE",
+   "name": "Centennial",
+   "state": "closed",
+   "until": null,
+   "raw": "Closed",
+   "alert": true
+  },
+  {
+   "code": "CH",
+   "name": "City Hall",
+   "state": "closed",
+   "until": "2026-11-27T09:00:00-05:00",
+   "raw": "Closed until 9:00 am Friday",
+   "alert": false
+  },
+  {
+   "code": "CC",
+   "name": "Cliffcrest",
+   "state": "closed",
+   "until": "2026-11-27T09:00:00-05:00",
+   "raw": "Closed until 9:00 am Friday",
+   "alert": false
+  },
+  {
+   "code": "CS",
+   "name": "College/Shaw",
+   "state": "closed",
+   "until": "2026-11-27T10:00:00-05:00",
+   "raw": "Closed until 10:00 am Friday",
+   "alert": false
+  },
+  {
+   "code": "DA",
+   "name": "Danforth/Coxwell",
+   "state": "closed",
+   "until": "2026-11-27T09:00:00-05:00",
+   "raw": "Closed until 9:00 am Friday",
+   "alert": false
+  },
+  {
+   "code": "DGH",
+   "name": "Daniel G. Hill",
+   "state": "closed",
+   "until": "2026-11-27T09:00:00-05:00",
+   "raw": "Closed until 9:00 am Friday",
+   "alert": false
+  },
+  {
+   "code": "DT",
+   "name": "Davenport",
+   "state": "closed",
+   "until": "2026-11-27T10:00:00-05:00",
+   "raw": "Closed until 10:00 am Friday",
+   "alert": false
+  },
+  {
+   "code": "DR",
+   "name": "Dawes Road",
+   "state": "closed",
+   "until": null,
+   "raw": "Closed",
+   "alert": true
+  },
+  {
+   "code": "DP",
+   "name": "Deer Park",
+   "state": "closed",
+   "until": "2026-11-27T09:00:00-05:00",
+   "raw": "Closed until 9:00 am Friday",
+   "alert": false
+  },
+  {
+   "code": "DM",
+   "name": "Don Mills",
+   "state": "closed",
+   "until": "2026-11-27T09:00:00-05:00",
+   "raw": "Closed until 9:00 am Friday",
+   "alert": false
+  },
+  {
+   "code": "DO",
+   "name": "Downsview",
+   "state": "closed",
+   "until": "2026-11-27T09:00:00-05:00",
+   "raw": "Closed until 9:00 am Friday",
+   "alert": false
+  },
+  {
+   "code": "DU",
+   "name": "Dufferin/St.Clair",
+   "state": "closed",
+   "until": "2026-11-27T09:00:00-05:00",
+   "raw": "Closed until 9:00 am Friday",
+   "alert": false
+  },
+  {
+   "code": "EA",
+   "name": "Eatonville",
+   "state": "closed",
+   "until": "2026-11-27T09:00:00-05:00",
+   "raw": "Closed until 9:00 am Friday",
+   "alert": false
+  },
+  {
+   "code": "ES",
+   "name": "Eglinton Square",
+   "state": "closed",
+   "until": "2026-11-27T09:00:00-05:00",
+   "raw": "Closed until 9:00 am Friday",
+   "alert": true
+  },
+  {
+   "code": "EB",
+   "name": "Elmbrook Park",
+   "state": "closed",
+   "until": "2026-11-27T10:00:00-05:00",
+   "raw": "Closed until 10:00 am Friday",
+   "alert": false
+  },
+  {
+   "code": "EN",
+   "name": "Ethennonnhawahstihnen",
+   "state": "closed",
+   "until": "2026-11-27T09:00:00-05:00",
+   "raw": "Closed until 9:00 am Friday",
+   "alert": false
+  },
+  {
+   "code": "EG",
+   "name": "Evelyn Gregory",
+   "state": "closed",
+   "until": "2026-11-27T10:00:00-05:00",
+   "raw": "Closed until 10:00 am Friday",
+   "alert": false
+  },
+  {
+   "code": "FV",
+   "name": "Fairview",
+   "state": "closed",
+   "until": "2026-11-27T09:00:00-05:00",
+   "raw": "Closed until 9:00 am Friday",
+   "alert": false
+  },
+  {
+   "code": "FP",
+   "name": "Flemingdon Park",
+   "state": "closed",
+   "until": "2026-11-27T09:00:00-05:00",
+   "raw": "Closed until 9:00 am Friday",
+   "alert": true
+  },
+  {
+   "code": "FH",
+   "name": "Forest Hill",
+   "state": "closed",
+   "until": "2026-11-27T09:00:00-05:00",
+   "raw": "Closed until 9:00 am Friday",
+   "alert": false
+  },
+  {
+   "code": "FO",
+   "name": "Fort York",
+   "state": "closed",
+   "until": "2026-11-27T09:00:00-05:00",
+   "raw": "Closed until 9:00 am Friday",
+   "alert": true
+  },
+  {
+   "code": "GE",
+   "name": "Gerrard/Ashdale",
+   "state": "closed",
+   "until": "2026-11-27T09:00:00-05:00",
+   "raw": "Closed until 9:00 am Friday",
+   "alert": true
+  },
+  {
+   "code": "GHP",
+   "name": "Goldhawk Park",
+   "state": "closed",
+   "until": "2026-11-27T09:00:00-05:00",
+   "raw": "Closed until 9:00 am Friday",
+   "alert": false
+  },
+  {
+   "code": "GW",
+   "name": "Guildwood",
+   "state": "closed",
+   "until": "2026-11-27T10:00:00-05:00",
+   "raw": "Closed until 10:00 am Friday",
+   "alert": false
+  },
+  {
+   "code": "HP",
+   "name": "High Park",
+   "state": "closed",
+   "until": "2026-11-27T09:00:00-05:00",
+   "raw": "Closed until 9:00 am Friday",
+   "alert": false
+  },
+  {
+   "code": "HC",
+   "name": "Highland Creek",
+   "state": "closed",
+   "until": "2026-11-27T10:00:00-05:00",
+   "raw": "Closed until 10:00 am Friday",
+   "alert": false
+  },
+  {
+   "code": "HIL",
+   "name": "Hillcrest",
+   "state": "closed",
+   "until": "2026-11-27T09:00:00-05:00",
+   "raw": "Closed until 9:00 am Friday",
+   "alert": false
+  },
+  {
+   "code": "HB",
+   "name": "Humber Bay",
+   "state": "closed",
+   "until": "2026-11-27T10:00:00-05:00",
+   "raw": "Closed until 10:00 am Friday",
+   "alert": false
+  },
+  {
+   "code": "HS",
+   "name": "Humber Summit",
+   "state": "closed",
+   "until": "2026-11-27T10:00:00-05:00",
+   "raw": "Closed until 10:00 am Friday",
+   "alert": false
+  },
+  {
+   "code": "HW",
+   "name": "Humberwood",
+   "state": "closed",
+   "until": "2026-11-27T09:00:00-05:00",
+   "raw": "Closed until 9:00 am Friday",
+   "alert": false
+  },
+  {
+   "code": "JS",
+   "name": "Jane/Sheppard",
+   "state": "closed",
+   "until": "2026-11-27T09:00:00-05:00",
+   "raw": "Closed until 9:00 am Friday",
+   "alert": false
+  },
+  {
+   "code": "JO",
+   "name": "Jones",
+   "state": "closed",
+   "until": "2026-11-27T10:00:00-05:00",
+   "raw": "Closed until 10:00 am Friday",
+   "alert": false
+  },
+  {
+   "code": "JT",
+   "name": "Junction Triangle",
+   "state": "closed",
+   "until": "2026-11-27T10:00:00-05:00",
+   "raw": "Closed until 10:00 am Friday",
+   "alert": false
+  },
+  {
+   "code": "KE",
+   "name": "Kennedy/Eglinton",
+   "state": "closed",
+   "until": "2026-11-27T09:00:00-05:00",
+   "raw": "Closed until 9:00 am Friday",
+   "alert": true
+  },
+  {
+   "code": "LE",
+   "name": "Leaside",
+   "state": "closed",
+   "until": "2026-11-27T09:00:00-05:00",
+   "raw": "Closed until 9:00 am Friday",
+   "alert": true
+  },
+  {
+   "code": "LS",
+   "name": "Lillian H. Smith",
+   "state": "closed",
+   "until": "2026-11-27T09:00:00-05:00",
+   "raw": "Closed until 9:00 am Friday",
+   "alert": false
+  },
+  {
+   "code": "LO",
+   "name": "Locke",
+   "state": "closed",
+   "until": "2026-11-27T09:00:00-05:00",
+   "raw": "Closed until 9:00 am Friday",
+   "alert": true
+  },
+  {
+   "code": "LB",
+   "name": "Long Branch",
+   "state": "closed",
+   "until": "2026-11-27T10:00:00-05:00",
+   "raw": "Closed until 10:00 am Friday",
+   "alert": true
+  },
+  {
+   "code": "MA",
+   "name": "Main Street",
+   "state": "closed",
+   "until": "2026-11-27T09:00:00-05:00",
+   "raw": "Closed until 9:00 am Friday",
+   "alert": false
+  },
+  {
+   "code": "MAL",
+   "name": "Malvern",
+   "state": "closed",
+   "until": "2026-11-27T09:00:00-05:00",
+   "raw": "Closed until 9:00 am Friday",
+   "alert": false
+  },
+  {
+   "code": "MAS",
+   "name": "Maria A. Shchuka",
+   "state": "closed",
+   "until": "2026-11-27T09:00:00-05:00",
+   "raw": "Closed until 9:00 am Friday",
+   "alert": true
+  },
+  {
+   "code": "MRV",
+   "name": "Maryvale",
+   "state": "closed",
+   "until": "2026-11-27T09:00:00-05:00",
+   "raw": "Closed until 9:00 am Friday",
+   "alert": false
+  },
+  {
+   "code": "MCG",
+   "name": "McGregor Park",
+   "state": "closed",
+   "until": "2026-11-27T09:00:00-05:00",
+   "raw": "Closed until 9:00 am Friday",
+   "alert": false
+  },
+  {
+   "code": "MI",
+   "name": "Mimico Centennial",
+   "state": "closed",
+   "until": "2026-11-27T10:00:00-05:00",
+   "raw": "Closed until 10:00 am Friday",
+   "alert": true
+  },
+  {
+   "code": "MS",
+   "name": "Morningside",
+   "state": "closed",
+   "until": "2026-11-27T09:00:00-05:00",
+   "raw": "Closed until 9:00 am Friday",
+   "alert": true
+  },
+  {
+   "code": "MD",
+   "name": "Mount Dennis",
+   "state": "closed",
+   "until": "2026-11-27T09:00:00-05:00",
+   "raw": "Closed until 9:00 am Friday",
+   "alert": false
+  },
+  {
+   "code": "MP",
+   "name": "Mount Pleasant",
+   "state": "closed",
+   "until": "2026-11-27T10:00:00-05:00",
+   "raw": "Closed until 10:00 am Friday",
+   "alert": false
+  },
+  {
+   "code": "NT",
+   "name": "New Toronto",
+   "state": "closed",
+   "until": "2026-11-27T10:00:00-05:00",
+   "raw": "Closed until 10:00 am Friday",
+   "alert": false
+  },
+  {
+   "code": "CL",
+   "name": "North York Central Library",
+   "state": "closed",
+   "until": "2026-11-27T09:00:00-05:00",
+   "raw": "Closed until 9:00 am Friday",
+   "alert": true
+  },
+  {
+   "code": "ND",
+   "name": "Northern District",
+   "state": "closed",
+   "until": "2026-11-27T09:00:00-05:00",
+   "raw": "Closed until 9:00 am Friday",
+   "alert": false
+  },
+  {
+   "code": "NE",
+   "name": "Northern Elms",
+   "state": "closed",
+   "until": "2026-11-27T10:00:00-05:00",
+   "raw": "Closed until 10:00 am Friday",
+   "alert": false
+  },
+  {
+   "code": "OV",
+   "name": "Oakwood Village Library and Arts Centre",
+   "state": "closed",
+   "until": "2026-11-27T10:00:00-05:00",
+   "raw": "Closed until 10:00 am Friday",
+   "alert": true
+  },
+  {
+   "code": "PM",
+   "name": "Palmerston",
+   "state": "closed",
+   "until": "2026-11-27T09:00:00-05:00",
+   "raw": "Closed until 9:00 am Friday",
+   "alert": true
+  },
+  {
+   "code": "PA",
+   "name": "Pape/Danforth",
+   "state": "closed",
+   "until": "2026-11-27T09:00:00-05:00",
+   "raw": "Closed until 9:00 am Friday",
+   "alert": false
+  },
+  {
+   "code": "PK",
+   "name": "Parkdale",
+   "state": "closed",
+   "until": "2026-11-27T09:00:00-05:00",
+   "raw": "Closed until 9:00 am Friday",
+   "alert": false
+  },
+  {
+   "code": "PL",
+   "name": "Parliament Street",
+   "state": "closed",
+   "until": "2026-11-27T09:00:00-05:00",
+   "raw": "Closed until 9:00 am Friday",
+   "alert": false
+  },
+  {
+   "code": "PV",
+   "name": "Pleasant View",
+   "state": "closed",
+   "until": null,
+   "raw": "Closed",
+   "alert": true
+  },
+  {
+   "code": "PU",
+   "name": "Port Union",
+   "state": "closed",
+   "until": "2026-11-27T10:00:00-05:00",
+   "raw": "Closed until 10:00 am Friday",
+   "alert": false
+  },
+  {
+   "code": "QS",
+   "name": "Queen/Saulter",
+   "state": "closed",
+   "until": "2026-11-27T10:00:00-05:00",
+   "raw": "Closed until 10:00 am Friday",
+   "alert": false
+  },
+  {
+   "code": "RX",
+   "name": "Rexdale",
+   "state": "closed",
+   "until": "2026-11-27T10:00:00-05:00",
+   "raw": "Closed until 10:00 am Friday",
+   "alert": false
+  },
+  {
+   "code": "RI",
+   "name": "Richview",
+   "state": "closed",
+   "until": "2026-11-27T09:00:00-05:00",
+   "raw": "Closed until 9:00 am Friday",
+   "alert": true
+  },
+  {
+   "code": "RD",
+   "name": "Riverdale",
+   "state": "closed",
+   "until": "2026-11-27T09:00:00-05:00",
+   "raw": "Closed until 9:00 am Friday",
+   "alert": false
+  },
+  {
+   "code": "RN",
+   "name": "Runnymede",
+   "state": "closed",
+   "until": "2026-11-27T09:00:00-05:00",
+   "raw": "Closed until 9:00 am Friday",
+   "alert": false
+  },
+  {
+   "code": "SWS",
+   "name": "S. Walter Stewart",
+   "state": "closed",
+   "until": "2026-11-27T09:00:00-05:00",
+   "raw": "Closed until 9:00 am Friday",
+   "alert": false
+  },
+  {
+   "code": "SA",
+   "name": "Sanderson - Closed",
+   "state": "closed",
+   "until": null,
+   "raw": "Closed",
+   "alert": true
+  },
+  {
+   "code": "SC",
+   "name": "Scarborough Civic Centre",
+   "state": "closed",
+   "until": "2026-11-27T09:00:00-05:00",
+   "raw": "Closed until 9:00 am Friday",
+   "alert": true
+  },
+  {
+   "code": "SP",
+   "name": "Spadina Road",
+   "state": "closed",
+   "until": "2026-11-27T10:00:00-05:00",
+   "raw": "Closed until 10:00 am Friday",
+   "alert": false
+  },
+  {
+   "code": "SI",
+   "name": "St. Clair/Silverthorn",
+   "state": "closed",
+   "until": "2026-11-27T10:00:00-05:00",
+   "raw": "Closed until 10:00 am Friday",
+   "alert": false
+  },
+  {
+   "code": "SJ",
+   "name": "St. James Town",
+   "state": "closed",
+   "until": "2026-11-27T09:00:00-05:00",
+   "raw": "Closed until 9:00 am Friday",
+   "alert": false
+  },
+  {
+   "code": "SL",
+   "name": "St. Lawrence",
+   "state": "closed",
+   "until": "2026-11-27T10:00:00-05:00",
+   "raw": "Closed until 10:00 am Friday",
+   "alert": true
+  },
+  {
+   "code": "ST",
+   "name": "Steeles",
+   "state": "closed",
+   "until": "2026-11-27T09:00:00-05:00",
+   "raw": "Closed until 9:00 am Friday",
+   "alert": false
+  },
+  {
+   "code": "SW",
+   "name": "Swansea Memorial",
+   "state": "closed",
+   "until": "2026-11-27T13:30:00-05:00",
+   "raw": "Closed until 1:30 pm Friday",
+   "alert": false
+  },
+  {
+   "code": "TA",
+   "name": "Taylor Memorial",
+   "state": "closed",
+   "until": "2026-11-27T10:00:00-05:00",
+   "raw": "Closed until 10:00 am Friday",
+   "alert": false
+  },
+  {
+   "code": "TH",
+   "name": "Thorncliffe",
+   "state": "closed",
+   "until": "2026-11-27T09:00:00-05:00",
+   "raw": "Closed until 9:00 am Friday",
+   "alert": false
+  },
+  {
+   "code": "TOD",
+   "name": "Todmorden Room",
+   "state": "closed",
+   "until": "2026-11-28T09:00:00-05:00",
+   "raw": "Closed until 9:00 am Saturday",
+   "alert": false
+  },
+  {
+   "code": "TRL",
+   "name": "Toronto Reference Library",
+   "state": "closed",
+   "until": "2026-11-27T09:00:00-05:00",
+   "raw": "Closed until 9:00 am Friday",
+   "alert": false
+  },
+  {
+   "code": "VV",
+   "name": "Victoria Village",
+   "state": "closed",
+   "until": "2026-11-27T10:00:00-05:00",
+   "raw": "Closed until 10:00 am Friday",
+   "alert": false
+  },
+  {
+   "code": "WE",
+   "name": "Weston",
+   "state": "closed",
+   "until": "2026-11-27T09:00:00-05:00",
+   "raw": "Closed until 9:00 am Friday",
+   "alert": false
+  },
+  {
+   "code": "WS",
+   "name": "Woodside Square",
+   "state": "closed",
+   "until": "2026-11-27T09:00:00-05:00",
+   "raw": "Closed until 9:00 am Friday",
+   "alert": true
+  },
+  {
+   "code": "WP",
+   "name": "Woodview Park",
+   "state": "closed",
+   "until": "2026-11-27T10:00:00-05:00",
+   "raw": "Closed until 10:00 am Friday",
+   "alert": false
+  },
+  {
+   "code": "WY",
+   "name": "Wychwood",
+   "state": "closed",
+   "until": "2026-11-27T09:00:00-05:00",
+   "raw": "Closed until 9:00 am Friday",
+   "alert": false
+  },
+  {
+   "code": "YW",
+   "name": "York Woods",
+   "state": "closed",
+   "until": "2026-11-27T09:00:00-05:00",
+   "raw": "Closed until 9:00 am Friday",
+   "alert": false
+  },
+  {
+   "code": "YO",
+   "name": "Yorkville",
+   "state": "closed",
+   "until": "2026-11-27T09:00:00-05:00",
+   "raw": "Closed until 9:00 am Friday",
+   "alert": false
+  }
+ ]
+}
