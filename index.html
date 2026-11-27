@@ -79,8 +79,8 @@ const esc = s => String(s).replace(/[&<>"']/g, c => ({"&": "&amp;", "<": "&lt;",
 const norm = s => s.toLowerCase().replace(/[^a-z0-9]/g, "");
 
 /* ---------- Map ---------- */
-const map = L.map("map", {zoomControl: false, attributionControl: true, preferCanvas: true, zoomSnap: 0, zoomDelta: 0.5, wheelPxPerZoomLevel: 120, bounceAtZoomLimits: false}).setView(DEFAULT, 12);
-L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {maxZoom: 19, attribution: "© OpenStreetMap", updateWhenZooming: false, keepBuffer: 4}).addTo(map);
+const map = L.map("map", {zoomControl: false, attributionControl: true}).setView(DEFAULT, 12);
+L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {maxZoom: 19, attribution: "© OpenStreetMap"}).addTo(map);
 const layer = L.layerGroup().addTo(map);
 map.on("click", () => { if (S.sel) { S.sel = null; render(); setSnap(0); } });
 let me = null;
@@ -424,10 +424,17 @@ const openPill = f => {
       + (f.lib && f.lib.alert ? ' <span class="pill orange">Alert</span>' : "");
   }
   const L = f.live;
-  if (L && liveClosed(L)) return '<span class="pill red">Closed</span>';
+  if (L && liveClosed(L)) return '<span class="pill red">' + (/season/i.test(L.reason) ? 'Closed for the season' : 'Closed') + '</span>';
   if (L && L.status === 2) return '<span class="pill orange">Service alert</span>';
   if (L && L.status === 1) return '<span class="pill green">Open</span>';
-  const s = openState(f); return s === true ? '<span class="pill green">Open now</span>' : s === false ? '<span class="pill red">Closed now</span>' : ""; };
+  const s = openState(f); return s === true ? '<span class="pill green">Open now</span>' : s === false ? '<span class="pill red">' + (offSeason(f) ? 'Closed for the season' : 'Closed now') + '</span>' : ""; };
+// true when every season range in the posted hours is out of season today (e.g. "April to October" in November)
+function offSeason(f) {
+  const segs = (f.hours || "").toLowerCase().split(/[;\n|]/).filter(x => x.trim());
+  if (!segs.length) return false;
+  const m = torontoNow().month;
+  return segs.every(seg => seasonOK(seg, m) === false);
+}
 
 /* ---------- Helpers ---------- */
 function dist(f) {
