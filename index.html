@@ -144,6 +144,8 @@ function toItem(f, kind, i) {
   Object.assign(it, {
     id: "library" + i, name, url, hours: null, extras: [], status: null, access: false, bottle: false,
     phone: get(["telephone", "phone"]),
+    code: get(["branchcode", "code"]),
+    lib: null,
     address: [it.address, postal].filter(Boolean).join(", ") || null
   });
   return it;
@@ -323,6 +325,7 @@ async function load() {
   S.items = items;
   drawMarkers(); render();
   mergeLive();
+  mergeLibraries();
 }
 $("toast").onclick = () => { if ($("toast").textContent.includes("retry")) load(); };
 function toast(t) { const el = $("toast"); el.textContent = t; el.style.display = t ? "block" : "none"; }
@@ -351,7 +354,41 @@ function dayOK(seg, day) {
   return inRange(day, a, b);
 }
 const TIME_RE = /(\d{1,2})(?::(\d{2}))?\s*([ap])?\.?m?\.?\s*(?:to|-|–|—|until)\s*(\d{1,2})(?::(\d{2}))?\s*([ap])\.?m\.?/gi;
-function openState(f) {            // true = open, false = closed, null = unknown
+/* ---------- Library hours (from the library's own listing, refreshed by the workflow) ---------- */
+function libOpen(f) {
+  const L = f.lib; if (!L) return null;
+  const now = Date.now(), gen = Date.parse(L.generated), until = L.until ? Date.parse(L.until) : null;
+  if (!gen || now - gen > 8 * 3600e3) return null;              // data too old to trust
+  if (L.state === "open") return until && now >= until ? false : true;
+  if (until && now >= until) return null;                       // should have opened by now; wait for the next refresh
+  return false;
+}
+async function mergeLibraries() {
+  if (!S.items.some(f => f.kind === "library")) return;
+  try {
+    const r = await fetch("data/library-status.json?_=" + Date.now());
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    const j = await r.json();
+    const byCode = new Map(), byName = new Map();
+    const nk = n => norm(String(n || "").replace(/library/ig, "").replace(/- closed/ig, ""));
+    for (const b of j.branches || []) { const info = {...b, generated: j.generated}; byCode.set(String(b.code).toUpperCase(), info); byName.set(nk(b.name), info); }
+    let hit = 0, libs = 0;
+    for (const f of S.items) {
+      if (f.kind !== "library") continue;
+      libs++;
+      const info = (f.code && byCode.get(String(f.code).toUpperCase())) || byName.get(nk(f.name));
+      if (info) { f.lib = info; hit++; }
+    }
+    sourceNote += " Library hours: " + hit + "/" + libs + " matched (as of " + new Date(j.generated).toLocaleString("en-CA", {timeZone: "America/Toronto", dateStyle: "medium", timeStyle: "short"}) + ").";
+    drawMarkers(); if (!S.sel) render();
+  } catch (e) {
+    sourceNote += " Library hours unavailable (" + (e.message || e) + ").";
+    if (!S.sel) render();
+  }
+}
+
+function openState(f) {
+  if (f.kind === "library") return libOpen(f);            // true = open, false = closed, null = unknown
   if (f.live) {
     if (liveClosed(f.live)) return false;
     return true;
@@ -381,6 +418,11 @@ function openState(f) {            // true = open, false = closed, null = unknow
   return null;
 }
 const openPill = f => {
+  if (f.kind === "library") {
+    const st = openState(f);
+    return (st === true ? '<span class="pill green">Open now</span>' : st === false ? '<span class="pill red">Closed now</span>' : "")
+      + (f.lib && f.lib.alert ? ' <span class="pill orange">Alert</span>' : "");
+  }
   const L = f.live;
   if (L && liveClosed(L)) return '<span class="pill red">Closed</span>';
   if (L && L.status === 2) return '<span class="pill orange">Service alert</span>';
@@ -426,6 +468,7 @@ function render() {
       <a class="btn alt" href="${dirs}">Google Maps</a>
       ${f.url && /^https?:/.test(f.url) ? `<a class="btn alt" href="${esc(f.url)}">Website</a>` : ""}</div>
       <dl>
+        ${f.kind === "library" && f.lib ? `<dt>Hours (from the library’s website)</dt><dd>${esc(f.lib.raw)}</dd><dd class="sub">As of ${esc(new Date(f.lib.generated).toLocaleString("en-CA", {timeZone: "America/Toronto", dateStyle: "medium", timeStyle: "short"}))}${f.lib.alert ? ". The library has posted an alert for this branch." : ""}</dd>` : ""}
         ${f.kind === "library" ? `<dt>Washrooms &amp; drinking water</dt><dd>Inside the branch while it is open. Check the library’s website for today’s hours.</dd>` : ""}
         ${f.phone ? `<dt>Phone</dt><dd><a href="tel:${esc(f.phone.replace(/[^0-9+]/g, ""))}">${esc(f.phone)}</a></dd>` : ""}
         ${f.address ? `<dt>Address</dt><dd>${esc(f.address)}</dd>` : ""}
