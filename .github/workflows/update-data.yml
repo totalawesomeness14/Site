@@ -13,29 +13,27 @@ jobs:
       - name: Download City of Toronto Open Data
         run: |
           mkdir -p data
-          rm -f data/water.geojson
           CKAN="https://ckan0.cf.opendata.inter.prod-toronto.ca/api/3/action"
+          # grab <output name> <required property or ""> <dataset slug>
           grab() {
-            out=$1; shift
-            for slug in "$@"; do
-              echo "Trying $slug"
-              curl -fsSL "$CKAN/package_show?id=$slug" -o meta.json || continue
-              jq -r '.result.resources[] | "\(.format) | \(.name) | \(.url)"' meta.json
-              jq -r '[.result.resources[] | select((.format|ascii_downcase)=="geojson")] | sort_by(((.name // "")|contains("4326"))|not) | .[].url' meta.json > urls.txt
-              while read -r url; do
-                [ -n "$url" ] || continue
-                curl -fsSL "$url" -o cand.json || continue
-                if jq -e '[.features[]?.properties | has("Status")] | any' cand.json > /dev/null; then
-                  mv cand.json "data/$out.geojson"; echo "Saved $out from $url"; return 0
-                else
-                  echo "No Status column in $url"; jq -c '.features[0].properties | keys' cand.json
-                fi
-              done < urls.txt
-            done
+            out=$1; need=$2; slug=$3
+            echo "Trying $slug"
+            curl -fsSL "$CKAN/package_show?id=$slug" -o meta.json || return 1
+            jq -r '.result.resources[] | "\(.format) | \(.name)"' meta.json
+            jq -r '[.result.resources[] | select((.format|ascii_downcase)=="geojson")] | sort_by(((.name // "")|contains("4326"))|not) | .[].url' meta.json > urls.txt
+            while read -r url; do
+              [ -n "$url" ] || continue
+              curl -fsSL "$url" -o cand.json || continue
+              if jq -e --arg need "$need" '(.features | length) > 0 and ($need == "" or ([.features[].properties | has($need)] | any))' cand.json > /dev/null; then
+                mv cand.json "data/$out.geojson"; echo "Saved $out from $url"; return 0
+              fi
+              echo "Skipped $url (no features or no $need column)"
+            done < urls.txt
             return 1
           }
-          grab washroom washroom-facilities || echo "washroom download failed"
-          grab water parks-drinking-fountains || echo "water download failed"
+          grab washroom Status washroom-facilities || echo "washroom download failed"
+          grab water Status parks-drinking-fountains || echo "water download failed"
+          grab libraries "" library-branch-general-information || echo "libraries download failed"
           ls -l data
       - name: Commit if changed
         run: |
