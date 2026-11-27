@@ -534,7 +534,7 @@ $("chips").onclick = e => {
 };
 $("search").oninput = e => { S.q = e.target.value; S.sel = null; render(); };
 let preSnap = 0;
-$("search").onfocus = () => { preSnap = S.snap === 2 ? 1 : S.snap; setSnap(2); };
+$("search").onfocus = () => { preSnap = S.snap; setSnap(1); };
 $("search").onblur = () => setSnap(preSnap);
 $("search").onkeydown = e => { if (e.key === "Enter") e.target.blur(); };
 
