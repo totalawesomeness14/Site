@@ -442,32 +442,9 @@ $("chips").onclick = e => {
 };
 $("search").oninput = e => { S.q = e.target.value; S.sel = null; render(); };
 let preSnap = 0;
-$("search").onfocus = () => { preSnap = S.snap === 2 ? 1 : S.snap; setSnap(2); fitViewport(); };
-$("search").onblur = () => { resetSheet(); setSnap(preSnap); };
+$("search").onfocus = () => { preSnap = S.snap === 2 ? 1 : S.snap; setSnap(2); };
+$("search").onblur = () => setSnap(preSnap);
 $("search").onkeydown = e => { if (e.key === "Enter") e.target.blur(); };
-
-/* Keep the sheet above the iPhone keyboard instead of letting Safari push the whole page up */
-function fitViewport() {
-  const vv = window.visualViewport; if (!vv) return;
-  $("top").style.transform = vv.offsetTop ? `translateY(${vv.offsetTop}px)` : "";
-  if (document.activeElement === $("search")) {
-    // While typing: pin the sheet from just under the chips down to the top edge of the keyboard, so no map shows between them
-    const top = vv.offsetTop + 64;
-    sheet.style.transition = "none";
-    sheet.style.bottom = "auto";
-    sheet.style.top = top + "px";
-    sheet.style.height = Math.max(160, vv.height - 64) + "px";
-  }
-  if (window.scrollY) window.scrollTo(0, 0);
-}
-function resetSheet() {
-  sheet.style.transition = ""; sheet.style.top = ""; sheet.style.bottom = ""; sheet.style.height = "";
-  $("top").style.transform = "";
-}
-if (window.visualViewport) {
-  visualViewport.addEventListener("resize", fitViewport);
-  visualViewport.addEventListener("scroll", fitViewport);
-}
 
 let centered = false;
 function locate(fly) {
