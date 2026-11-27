@@ -102,7 +102,7 @@ function toItemBase(f, kind, i) {
   const find = keys => { for (const w of keys) for (const k in props) if (norm(k) === w) return props[k]; return null; };
   const address = find(["address", "streetaddress"]);
   const hourKey = Object.keys(props).find(k => norm(k).includes("hour"));
-  const used = new Set(["name","assetname","facilityname","locationname","parkname","location","address","streetaddress","locationdetails","description","status","alert","statusmessage","servicealert","category","alternativename","assetid","url","website","link","id","objectid","latitude","longitude","lat","lng","lon","x","y","geometry"]);
+  const used = new Set(["name","assetname","facilityname","locationname","parkname","location","address","streetaddress","locationdetails","description","status","alert","statusmessage","servicealert","category","alternativename","assetid","url","website","link","id","objectid","latitude","longitude","lat","lng","lon","x","y","geometry","ward","wardname","wardno","wardnumber","wardid"]);
   const negative = v => ["no","false","0","n","none","n/a"].includes(v.toLowerCase()) || v.toLowerCase().startsWith("not");
   if (decide) {
     const hay = Object.entries(props).filter(([k]) => /type|categ|class/i.test(k)).map(([, v]) => v).join(" ").toLowerCase();
