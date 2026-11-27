@@ -81,6 +81,7 @@ const norm = s => s.toLowerCase().replace(/[^a-z0-9]/g, "");
 const map = L.map("map", {zoomControl: false, attributionControl: true}).setView(DEFAULT, 12);
 L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {maxZoom: 19, attribution: "© OpenStreetMap"}).addTo(map);
 const layer = L.layerGroup().addTo(map);
+map.on("click", () => { if (S.sel) { S.sel = null; render(); setSnap(0); } });
 let me = null;
 
 /* ---------- Data ---------- */
@@ -357,7 +358,7 @@ function drawMarkers() {
   for (const f of visible()) {
     const css = getComputedStyle(document.documentElement).getPropertyValue(f.kind === "water" ? "--water" : "--wc").trim();
     const st = openState(f);
-    L.circleMarker([f.lat, f.lon], {radius: 9, color: "#fff", weight: 2, fillColor: st === false ? "#9ca3af" : css, fillOpacity: st === false ? .7 : 1})
+    L.circleMarker([f.lat, f.lon], {radius: 9, color: "#fff", weight: 2, fillColor: st === false ? "#9ca3af" : css, fillOpacity: st === false ? .7 : 1, bubblingMouseEvents: false})
       .on("click", () => select(f)).addTo(layer);
   }
 }
@@ -417,7 +418,7 @@ function render() {
 let hl = null;
 function highlight(f) {
   if (hl) { map.removeLayer(hl); hl = null; }
-  if (f) hl = L.circleMarker([f.lat, f.lon], {radius: 16, color: "#f59e0b", weight: 3, fill: false, interactive: false}).addTo(map);
+  if (f) hl = L.circleMarker([f.lat, f.lon], {radius: 12, color: "#f59e0b", weight: 2.5, fill: false, interactive: false}).addTo(map);
 }
 function select(f) {
   S.sel = f; render(); setSnap(1);
