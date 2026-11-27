@@ -145,7 +145,7 @@ function toItem(f, kind, i) {
   if (url && !/^https?:/i.test(url)) url = "https://" + url.replace(/^\/+/, "");
   const postal = get(["postalcode"]);
   Object.assign(it, {
-    id: "library" + i, name, url, hours: null, extras: [], status: null, access: false, bottle: false,
+    id: "library" + i, name, url, hours: get(["hours"]), wc: get(["publicwashroom"]), extras: [], status: null, access: false, bottle: false,
     phone: get(["telephone", "phone"]),
     code: get(["branchcode", "code"]),
     lib: null,
@@ -307,6 +307,24 @@ async function mergeLive() {
   drawMarkers(); if (!S.sel) render();
 }
 
+function dropLibraryDuplicates(items) {
+  const libs = items.filter(f => f.kind === "library");
+  if (!libs.length) return {items, dropped: 0};
+  const meters = (a, b) => {
+    const r = Math.PI / 180, x = Math.sin((b.lat - a.lat) * r / 2) ** 2 + Math.cos(a.lat * r) * Math.cos(b.lat * r) * Math.sin((b.lon - a.lon) * r / 2) ** 2;
+    return 12742000 * Math.asin(Math.sqrt(x));
+  };
+  let dropped = 0;
+  const kept = items.filter(f => {
+    if (f.kind === "library") return true;
+    const text = Object.values(f.props || {}).join(" ");
+    if (!/librar|\btpl\b|torontopubliclibrary/i.test(text)) return true;       // not described as a library
+    if (!libs.some(l => meters(f, l) < 300)) return true;                         // and not next to a library branch
+    dropped++; return false;
+  });
+  return {items: kept, dropped};
+}
+
 async function load() {
   toast("Loading…");
   const why = [];
@@ -325,6 +343,8 @@ async function load() {
   sourceNote += " " + w + " washrooms, " + d + " drinking water.";
   try { const libs = await loadLibraries(); items = items.concat(libs); sourceNote += " " + libs.length + " libraries."; }
   catch (e) { sourceNote += " Libraries unavailable (" + (e.message || e) + ")."; }
+  const dd = dropLibraryDuplicates(items); items = dd.items;
+  if (dd.dropped) sourceNote += " Merged " + dd.dropped + " library washroom/fountain entries into their libraries.";
   S.items = items;
   drawMarkers(); render();
   mergeLive();
@@ -391,7 +411,7 @@ async function mergeLibraries() {
 }
 
 function openState(f) {
-  if (f.kind === "library") return libOpen(f);            // true = open, false = closed, null = unknown
+  if (f.kind === "library") { const r = libOpen(f); if (r !== null) return r; }   // true = open, false = closed, null = unknown
   if (f.live) {
     if (liveClosed(f.live)) return false;
     return true;
@@ -410,7 +430,8 @@ function openState(f) {
       any = true;
       const eH = +m[4] % 12, sH = +m[1] % 12;
       const ePM = m[6] === "p";
-      const sPM = m[3] ? m[3] === "p" : (sH <= eH ? ePM : !ePM);
+      let sPM = m[3] ? m[3] === "p" : (sH <= eH ? ePM : !ePM);
+      if (sH === 0 && !sPM && ePM) sPM = true;
       const start = (sH + (sPM ? 12 : 0)) * 60 + (+m[2] || 0);
       const end = (eH + (ePM ? 12 : 0)) * 60 + (+m[5] || 0);
       if (end > start ? now.mins >= start && now.mins < end : now.mins >= start || now.mins < end) open = true;
@@ -480,11 +501,11 @@ function render() {
       ${f.url && /^https?:/.test(f.url) ? `<a class="btn alt" href="${esc(f.url)}">Website</a>` : ""}</div>
       <dl>
         ${f.kind === "library" && f.lib ? `<dt>Hours (from the library’s website)</dt><dd>${esc(f.lib.raw)}</dd><dd class="sub">As of ${esc(new Date(f.lib.generated).toLocaleString("en-CA", {timeZone: "America/Toronto", dateStyle: "medium", timeStyle: "short"}))}${f.lib.alert ? ". The library has posted an alert for this branch." : ""}</dd>` : ""}
-        ${f.kind === "library" ? `<dt>Washrooms &amp; drinking water</dt><dd>Inside the branch while it is open. Check the library’s website for today’s hours.</dd>` : ""}
+        ${f.kind === "library" ? `<dt>Washroom</dt><dd>${f.wc === "1" ? "Public washroom inside the branch, available while it is open." : "Not confirmed in the City’s library data for this branch."}</dd>` : ""}
         ${f.phone ? `<dt>Phone</dt><dd><a href="tel:${esc(f.phone.replace(/[^0-9+]/g, ""))}">${esc(f.phone)}</a></dd>` : ""}
         ${f.address ? `<dt>Address</dt><dd>${esc(f.address)}</dd>` : ""}
         ${f.live && (f.live.reason || f.live.comments) ? `<dt>City status update</dt><dd>${esc([f.live.reason, f.live.comments].filter(Boolean).join(" — "))}</dd>${f.live.posted ? `<dd class="sub">Posted ${esc(f.live.posted)}</dd>` : ""}` : ""}
-        ${f.hours ? `<dt>Hours</dt><dd>${esc(f.hours)}</dd>${(f.live || openState(f) === null) ? "" : `<dd class="sub">Open/closed is worked out from the listed hours (Toronto time).</dd>`}` : ""}
+        ${f.hours ? `<dt>Hours</dt><dd>${esc(f.hours).replace(/; /g, "<br>")}</dd>${(f.live || openState(f) === null) ? "" : `<dd class="sub">Open/closed is worked out from the listed hours (Toronto time).</dd>`}` : ""}
         ${f.details ? `<dt>Where</dt><dd>${esc(f.details)}</dd>` : ""}
         ${f.extras.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join("")}
       </dl></div>`;
