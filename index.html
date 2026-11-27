@@ -20,6 +20,7 @@ html,body{margin:0;height:100%;overflow:hidden;overscroll-behavior:none;font:16p
 #chips::-webkit-scrollbar{display:none}
 .chip{flex:none;min-height:44px;padding:0 16px;border:0;border-radius:22px;background:var(--chip);color:var(--fg);font-size:15px;font-weight:600;font-family:inherit;box-shadow:0 1px 4px rgba(0,0,0,.25)}
 .chip.on{background:var(--accent);color:#fff}
+.chip.toggle.on{background:#16a34a}
 #toast{white-space:pre-wrap;word-break:break-word;max-height:30vh;overflow:auto;margin:6px 12px 0;padding:10px 14px;border-radius:12px;background:var(--chip);box-shadow:0 1px 4px rgba(0,0,0,.25);font-size:14px;display:none}
 #loc{position:fixed;right:12px;top:calc(env(safe-area-inset-top) + 68px);z-index:1000;width:44px;height:44px;border-radius:50%;border:0;background:var(--chip);color:var(--accent);font-size:22px;box-shadow:0 1px 4px rgba(0,0,0,.25)}
 .leaflet-top.leaflet-left{top:calc(env(safe-area-inset-top) + 60px)}
@@ -70,10 +71,10 @@ const SOURCES = [
   {kind: "water", slugs: ["parks-drinking-fountains"]}
 ];
 const DEFAULT = [43.6532, -79.3832];
-const FILTERS = [["all", "All"], ["open", "🟢 Open now"], ["washroom", "🚻 Washrooms"], ["water", "💧 Drinking water"], ["bottle", "🚰 Bottle refill"], ["library", "📚 Libraries"], ["access", "♿ Accessible"]];
+const FILTERS = [["all", "All"], ["washroom", "🚻 Washrooms"], ["water", "💧 Drinking water"], ["bottle", "🚰 Bottle refill"], ["library", "📚 Libraries"], ["access", "♿ Accessible"]];
 const SNAPS = [0.32, 0.6, 0.9];
 
-const S = {feedRows: [], unmatched: [], items: [], filter: "all", q: "", pos: null, sel: null, snap: 0};
+const S = {openOnly: false, feedRows: [], unmatched: [], items: [], filter: "all", q: "", pos: null, sel: null, snap: 0};
 const $ = id => document.getElementById(id);
 const esc = s => String(s).replace(/[&<>"']/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"}[c]));
 const norm = s => s.toLowerCase().replace(/[^a-z0-9]/g, "");
@@ -447,7 +448,8 @@ const pill = s => { if (!s) return ""; const t = s.toLowerCase(); const c = /clo
 const icon = f => f.kind === "water" ? "💧" : f.kind === "library" ? "📚" : "🚻";
 const kindLabel = f => f.kind === "water" ? "Drinking water" : f.kind === "library" ? "Library" : "Washroom";
 const kindClass = f => f.kind === "water" ? "water" : f.kind === "library" ? "lib" : "wc";
-const visible = () => S.items.filter(f => S.filter === "all" || (S.filter === "access" ? f.access : S.filter === "open" ? openState(f) === true : S.filter === "bottle" ? f.bottle : S.filter === "washroom" ? (f.kind === "washroom" || f.kind === "library") : S.filter === "water" ? (f.kind === "water" || f.kind === "library") : f.kind === S.filter));
+const inCategory = f => S.filter === "all" || (S.filter === "access" ? f.access : S.filter === "bottle" ? f.bottle : S.filter === "washroom" ? (f.kind === "washroom" || f.kind === "library") : S.filter === "water" ? (f.kind === "water" || f.kind === "library") : f.kind === S.filter);
+const visible = () => S.items.filter(f => inCategory(f) && (!S.openOnly || openState(f) === true));
 
 /* ---------- Rendering ---------- */
 function drawMarkers() {
@@ -532,11 +534,19 @@ function select(f) {
 }
 
 /* ---------- Chips, search, locate ---------- */
-$("chips").innerHTML = FILTERS.map(([k, l]) => `<button class="chip${k === "all" ? " on" : ""}" data-k="${k}">${l}</button>`).join("");
+$("chips").innerHTML = `<button class="chip toggle" id="openChip" aria-pressed="false">🟢 Open now</button>`
+  + FILTERS.map(([k, l]) => `<button class="chip${k === "all" ? " on" : ""}" data-k="${k}">${l}</button>`).join("");
 $("chips").onclick = e => {
   const b = e.target.closest(".chip"); if (!b) return;
-  S.filter = b.dataset.k; S.sel = null;
-  document.querySelectorAll(".chip").forEach(c => c.classList.toggle("on", c === b));
+  S.sel = null;
+  if (b.id === "openChip") {                       // on/off, combines with whichever category is selected
+    S.openOnly = !S.openOnly;
+    b.classList.toggle("on", S.openOnly);
+    b.setAttribute("aria-pressed", S.openOnly);
+  } else {
+    S.filter = b.dataset.k;
+    document.querySelectorAll(".chip[data-k]").forEach(c => c.classList.toggle("on", c === b));
+  }
   drawMarkers(); render();
 };
 $("search").oninput = e => { S.q = e.target.value; S.sel = null; render(); };
