@@ -13,7 +13,7 @@
 @media (prefers-color-scheme:dark){:root{--bg:#1c1c1e;--fg:#f3f4f6;--muted:#9ca3af;--line:#3a3a3c;--chip:#2c2c2e;--accent:#818cf8;--wc:#818cf8;--water:#38bdf8}}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html{-webkit-text-size-adjust:100%}
-html,body{margin:0;height:100%;font:16px/1.35 -apple-system,system-ui,Segoe UI,Roboto,sans-serif;color:var(--fg);background:var(--bg)}
+html,body{margin:0;height:100%;overflow:hidden;overscroll-behavior:none;font:16px/1.35 -apple-system,system-ui,Segoe UI,Roboto,sans-serif;color:var(--fg);background:var(--bg)}
 #map{position:fixed;inset:0}
 #top{position:fixed;top:0;left:0;right:0;z-index:1000;padding:calc(env(safe-area-inset-top) + 8px) 0 0}
 #chips{display:flex;gap:8px;overflow-x:auto;padding:0 12px 4px;scrollbar-width:none}
@@ -441,7 +441,26 @@ $("chips").onclick = e => {
   drawMarkers(); render();
 };
 $("search").oninput = e => { S.q = e.target.value; S.sel = null; render(); };
-$("search").onfocus = () => setSnap(2);
+let preSnap = 0;
+$("search").onfocus = () => { preSnap = S.snap === 2 ? 1 : S.snap; setSnap(2); fitViewport(); };
+$("search").onblur = () => { setSnap(preSnap); sheet.style.bottom = "0px"; $("top").style.transform = ""; };
+$("search").onkeydown = e => { if (e.key === "Enter") e.target.blur(); };
+
+/* Keep the sheet above the iPhone keyboard instead of letting Safari push the whole page up */
+function fitViewport() {
+  const vv = window.visualViewport; if (!vv) return;
+  const kb = Math.max(0, innerHeight - vv.height - vv.offsetTop);
+  sheet.style.bottom = kb + "px";
+  $("top").style.transform = vv.offsetTop ? `translateY(${vv.offsetTop}px)` : "";
+  if (document.activeElement === $("search")) {
+    sheet.style.setProperty("--h", Math.max(200, Math.min(innerHeight * 0.9, vv.height - 70)) + "px");
+  }
+  if (window.scrollY) window.scrollTo(0, 0);
+}
+if (window.visualViewport) {
+  visualViewport.addEventListener("resize", fitViewport);
+  visualViewport.addEventListener("scroll", fitViewport);
+}
 
 let centered = false;
 function locate(fly) {
