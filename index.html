@@ -366,15 +366,15 @@ function render() {
   const body = $("body");
   if (S.sel) {
     const f = S.sel;
-    const dirs = `https://maps.apple.com/?ll=${f.lat},${f.lon}&q=${encodeURIComponent(f.name)}`;
+    const dirs = `https://www.google.com/maps/dir/?api=1&destination=${f.lat},${f.lon}&travelmode=walking`;
     const apple = `https://maps.apple.com/?daddr=${f.lat},${f.lon}&dirflg=w`;
     body.innerHTML = `<div class="detail">
       <button class="back" id="back">‹ Back to list</button>
       <div class="sub">${icon(f)} ${f.kind === "water" ? "Drinking water" : "Washroom"} · ${fmt(dist(f))} away</div>
       <h2>${esc(f.name)}</h2>
       ${openPill(f)} ${pill(f.status)} ${f.bottle ? '<span class="pill green">🚰 Bottle refill</span>' : ""} ${f.access ? '<span class="pill green">♿ Accessible</span>' : ""}
-      <div class="btns"><a class="btn" href="${apple}">Walking directions</a>
-      <a class="btn alt" href="${dirs}">Apple Maps</a>
+      <div class="btns"><a class="btn" href="${apple}">Directions</a>
+      <a class="btn alt" href="${dirs}">Google Maps</a>
       ${f.url && /^https?:/.test(f.url) ? `<a class="btn alt" href="${esc(f.url)}">Website</a>` : ""}</div>
       <dl>
         ${f.address ? `<dt>Address</dt><dd>${esc(f.address)}</dd>` : ""}
@@ -386,6 +386,7 @@ function render() {
     $("back").onclick = () => { S.sel = null; render(); setSnap(0); };
     return;
   }
+  highlight(null);
   const q = S.q.toLowerCase();
   const list = visible()
     .filter(f => !q || `${f.name} ${f.address || ""} ${f.details || ""}`.toLowerCase().includes(q))
@@ -413,9 +414,19 @@ function render() {
   body.querySelectorAll(".row").forEach(b => b.onclick = () => select(list[+b.dataset.i][0]));
 }
 
+let hl = null;
+function highlight(f) {
+  if (hl) { map.removeLayer(hl); hl = null; }
+  if (f) hl = L.circleMarker([f.lat, f.lon], {radius: 16, color: "#f59e0b", weight: 3, fill: false, interactive: false}).addTo(map);
+}
 function select(f) {
   S.sel = f; render(); setSnap(1);
-  map.flyTo([f.lat, f.lon], Math.max(map.getZoom(), 16), {duration: .6});
+  const z = Math.max(map.getZoom(), 16), H = innerHeight, topBar = 110;
+  // put the point in the middle of the map area that stays visible above the sheet
+  const visibleCenter = (topBar + H * (1 - SNAPS[1])) / 2;
+  const target = map.unproject(map.project([f.lat, f.lon], z).add([0, H / 2 - visibleCenter]), z);
+  map.flyTo(target, z, {duration: .6});
+  highlight(f);
   $("body").scrollTop = 0;
 }
 
