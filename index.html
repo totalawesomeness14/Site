@@ -22,8 +22,7 @@ html{-webkit-text-size-adjust:100%}
 .dd-menu[hidden]{display:none}
 .dd-opt{display:block;width:100%;min-height:48px;padding:0 14px;border:0;border-bottom:1px solid var(--line);background:none;color:var(--fg);font-size:16px;font-family:inherit;text-align:left}
 .dd-opt:last-child{border-bottom:0}
-.dd-opt.sel{color:var(--accent);font-weight:600}
-.dd-opt.sel::after{content:"✓";float:right}
+.dd-opt.sel{background:var(--accent);color:#fff}
 #top.open{z-index:1002}
 #top,#chips,#chips2,#loc,#sheet,button,a{touch-action:manipulation}
 .chip,#loc{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
@@ -86,7 +85,7 @@ const SOURCES = [
   {kind: "water", slugs: ["parks-drinking-fountains"]}
 ];
 const DEFAULT = [43.6532, -79.3832];
-const FILTERS = [["all", "All"], ["washroom", "Washrooms"], ["access", "Accessible"], ["water", "Drinking water"], ["bottle", "Bottle refill"]];
+const FILTERS = [["all", "All"], ["washroom", "Washrooms"], ["water", "Drinking water"], ["bottle", "Bottle refill"]];
 const SNAPS = [0.32, 0.6, 0.9];
 
 const S = {openOnly: false, feedRows: [], unmatched: [], items: [], filter: "all", q: "", pos: null, sel: null, snap: 0};
