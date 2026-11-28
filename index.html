@@ -71,6 +71,7 @@ dl{margin:0}dt{font-size:12px;text-transform:uppercase;letter-spacing:.04em;colo
   <div id="chips"></div>
   <div id="toast"></div>
 </div>
+<input id="proxy" aria-hidden="true" tabindex="-1" autocomplete="off" style="position:fixed;top:0;left:0;width:1px;height:1px;opacity:0;border:0;padding:0;font-size:16px;pointer-events:none">
 <section id="sheet">
   <div id="handle"><i></i></div>
   <div class="srow" id="srow">
@@ -510,15 +511,14 @@ let preSnap = 0;
    and Safari has no reason to scroll the whole page up to reach it. */
 $("search").addEventListener("mousedown", e => { if (document.activeElement !== $("search")) e.preventDefault(); });   // stop Safari focusing too early
 $("search").addEventListener("click", () => {
-  const box = $("search");
+  const box = $("search"), proxy = $("proxy");
   if (document.activeElement === box) return;
   preSnap = S.snap === 2 ? 1 : S.snap;
-  sheet.classList.add("drag");            // no animation: the move must be finished before focusing
-  setSnap(2);
-  void sheet.offsetHeight;                // apply the new height now
-  box.focus({preventScroll: true});
-  requestAnimationFrame(() => sheet.classList.remove("drag"));
+  proxy.focus({preventScroll: true});     // opens the keyboard at once from an invisible box at the very top: nothing to scroll to
+  setSnap(2);                             // so the sheet can now animate smoothly
+  setTimeout(() => { if (document.activeElement === proxy) box.focus({preventScroll: true}); }, 320);   // hand over to the real box (keyboard stays up)
 });
+$("proxy").addEventListener("blur", () => setTimeout(() => { if (document.activeElement !== $("search")) setSnap(preSnap); }, 0));
 $("search").onfocus = () => { if (S.snap !== 2) { preSnap = S.snap; setSnap(2); } };
 $("search").onblur = () => setSnap(preSnap);
 $("search").onkeydown = e => { if (e.key === "Enter") e.target.blur(); };
