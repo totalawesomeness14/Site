@@ -13,6 +13,18 @@
 @media (prefers-color-scheme:dark){:root{--bg:#1c1c1e;--fg:#f3f4f6;--muted:#9ca3af;--line:#3a3a3c;--chip:#2c2c2e;--accent:#818cf8;--wc:#818cf8;--water:#38bdf8}}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html{-webkit-text-size-adjust:100%}
+#chips{overflow:visible}
+.dd{position:relative;display:inline-block}
+.dd-btn{display:inline-flex;align-items:center;gap:8px}
+.dd-btn svg{width:14px;height:14px;flex:none;transition:transform .15s}
+.dd-btn[aria-expanded="true"] svg{transform:rotate(180deg)}
+.dd-menu{position:absolute;top:calc(100% + 6px);left:0;min-width:210px;border-radius:14px;overflow:hidden;background:var(--bg);background:color-mix(in srgb,var(--bg) 82%,transparent);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);box-shadow:0 4px 16px rgba(0,0,0,.3)}
+.dd-menu[hidden]{display:none}
+.dd-opt{display:block;width:100%;min-height:48px;padding:0 16px;border:0;border-bottom:1px solid var(--line);background:none;color:var(--fg);font-size:16px;font-family:inherit;text-align:left}
+.dd-opt:last-child{border-bottom:0}
+.dd-opt.sel{color:var(--accent);font-weight:600}
+.dd-opt.sel::after{content:"✓";float:right}
+#top.open{z-index:1002}
 #top,#chips,#chips2,#loc,#sheet,button,a{touch-action:manipulation}
 .chip,#loc{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
 html,body{margin:0;height:100%;overflow:hidden;overscroll-behavior:none;font:16px/1.35 -apple-system,system-ui,Segoe UI,Roboto,sans-serif;color:var(--fg);background:var(--bg)}
@@ -75,7 +87,7 @@ const SOURCES = [
   {kind: "water", slugs: ["parks-drinking-fountains"]}
 ];
 const DEFAULT = [43.6532, -79.3832];
-const FILTERS = [["all", "All"], ["washroom", "🚻 Washrooms"], ["water", "💧 Drinking water"], ["bottle", "🚰 Bottle refill"], ["access", "♿ Accessible"]];
+const FILTERS = [["all", "All"], ["washroom", "Washrooms"], ["water", "Drinking water"], ["bottle", "Bottle refill"], ["access", "Accessible"]];
 const SNAPS = [0.32, 0.6, 0.9];
 
 const S = {openOnly: false, feedRows: [], unmatched: [], items: [], filter: "all", q: "", pos: null, sel: null, snap: 0};
@@ -461,23 +473,34 @@ function select(f) {
 }
 
 /* ---------- Chips, search, locate ---------- */
-$("chips").innerHTML = FILTERS.map(([k, l]) => `<button class="chip${k === "all" ? " on" : ""}" data-k="${k}">${l}</button>`).join("");
+const CHEVRON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>';
+$("chips").innerHTML = `<div class="dd">
+  <button class="chip dd-btn" id="catBtn" aria-haspopup="listbox" aria-expanded="false"><span id="catLabel">${FILTERS[0][1]}</span>${CHEVRON}</button>
+  <div class="dd-menu" id="catMenu" role="listbox" hidden>${FILTERS.map(([k, l]) => `<button class="dd-opt${k === S.filter ? " sel" : ""}" role="option" data-k="${k}">${l}</button>`).join("")}</div>
+</div>`;
 $("chips2").innerHTML = `<button class="chip toggle" id="openChip" aria-pressed="false">Open</button>`;
-const onChip = e => {
-  const b = e.target.closest(".chip"); if (!b) return;
+function setMenu(open) {
+  $("catMenu").hidden = !open;
+  $("catBtn").setAttribute("aria-expanded", open);
+  $("top").classList.toggle("open", open);            // lift the menu above the bottom sheet while it is open
+}
+$("catBtn").onclick = e => { e.stopPropagation(); setMenu($("catMenu").hidden); };
+$("catMenu").onclick = e => {
+  const o = e.target.closest(".dd-opt"); if (!o) return;
+  S.filter = o.dataset.k; S.sel = null;
+  $("catLabel").textContent = FILTERS.find(([k]) => k === S.filter)[1];
+  $("catMenu").querySelectorAll(".dd-opt").forEach(x => x.classList.toggle("sel", x === o));
+  setMenu(false); drawMarkers(); render();
+};
+document.addEventListener("click", e => { if (!$("catMenu").hidden && !e.target.closest(".dd")) setMenu(false); });
+$("chips2").onclick = e => {
+  const b = e.target.closest("#openChip"); if (!b) return;
   S.sel = null;
-  if (b.id === "openChip") {                       // on/off, combines with whichever category is selected
-    S.openOnly = !S.openOnly;
-    b.classList.toggle("on", S.openOnly);
-    b.setAttribute("aria-pressed", S.openOnly);
-  } else {
-    S.filter = b.dataset.k;
-    document.querySelectorAll(".chip[data-k]").forEach(c => c.classList.toggle("on", c === b));
-  }
+  S.openOnly = !S.openOnly;                          // on/off, combines with the selected category
+  b.classList.toggle("on", S.openOnly);
+  b.setAttribute("aria-pressed", S.openOnly);
   drawMarkers(); render();
 };
-$("chips").onclick = onChip;
-$("chips2").onclick = onChip;
 $("search").oninput = e => { S.q = e.target.value; S.sel = null; render(); };
 let preSnap = 0;
 $("search").onfocus = () => { preSnap = S.snap === 2 ? 1 : S.snap; setSnap(2); };
