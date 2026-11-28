@@ -506,7 +506,20 @@ $("openChip").onclick = e => {
 };
 $("search").oninput = e => { S.q = e.target.value; S.sel = null; render(); };
 let preSnap = 0;
-$("search").onfocus = () => { preSnap = S.snap === 2 ? 1 : S.snap; setSnap(2); };
+/* Open the sheet to full height BEFORE the keyboard appears, so the search box is already near the top
+   and Safari has no reason to scroll the whole page up to reach it. */
+$("search").addEventListener("mousedown", e => { if (document.activeElement !== $("search")) e.preventDefault(); });   // stop Safari focusing too early
+$("search").addEventListener("click", () => {
+  const box = $("search");
+  if (document.activeElement === box) return;
+  preSnap = S.snap === 2 ? 1 : S.snap;
+  sheet.classList.add("drag");            // no animation: the move must be finished before focusing
+  setSnap(2);
+  void sheet.offsetHeight;                // apply the new height now
+  box.focus({preventScroll: true});
+  requestAnimationFrame(() => sheet.classList.remove("drag"));
+});
+$("search").onfocus = () => { if (S.snap !== 2) { preSnap = S.snap; setSnap(2); } };
 $("search").onblur = () => setSnap(preSnap);
 $("search").onkeydown = e => { if (e.key === "Enter") e.target.blur(); };
 
