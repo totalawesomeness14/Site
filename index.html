@@ -36,13 +36,14 @@ html,body{margin:0;height:100%;overflow:hidden;overscroll-behavior:none;font:16p
 .chip.on{background:rgba(79,70,229,.85);background:color-mix(in srgb,var(--accent) 85%,transparent);color:#fff}
 .chip.toggle.on{background:rgba(22,163,74,.85)}
 #toast{white-space:pre-wrap;word-break:break-word;max-height:30vh;overflow:auto;margin:6px 12px 0;padding:10px 14px;border-radius:12px;background:var(--chip);box-shadow:0 1px 4px rgba(0,0,0,.25);font-size:14px;display:none}
-#loc{display:grid;place-items:center;padding:0;position:fixed;right:12px;top:calc(env(safe-area-inset-top) + 68px);z-index:1000;width:44px;height:44px;border-radius:50%;border:0;background:rgba(255,255,255,.55);background:color-mix(in srgb,var(--chip) 50%,transparent);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);color:var(--accent);font-size:22px;box-shadow:0 1px 4px rgba(0,0,0,.25)}
+#loc{display:grid;place-items:center;padding:0;flex:none;width:44px;height:44px;border-radius:50%;border:0;background:rgba(255,255,255,.55);background:color-mix(in srgb,var(--chip) 50%,transparent);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);color:var(--accent);font-size:22px;box-shadow:0 1px 4px rgba(0,0,0,.25)}
 .leaflet-top.leaflet-left{top:calc(env(safe-area-inset-top) + 60px)}
 #sheet{position:fixed;left:0;right:0;bottom:0;z-index:1001;height:var(--h,32dvh);height:var(--h,32vh);background:var(--bg);background:color-mix(in srgb,var(--bg) 75%,transparent);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);border-radius:18px 18px 0 0;box-shadow:0 -2px 12px rgba(0,0,0,.25);display:flex;flex-direction:column;transition:height .25s ease}
 #sheet.drag{transition:none}
 #handle{padding:10px 0 6px;touch-action:none;cursor:grab}
 #handle i{display:block;width:40px;height:5px;margin:0 auto;border-radius:3px;background:var(--line)}
-#search{margin:0 12px 8px;height:44px;padding:0 14px;border:1px solid var(--line);border-radius:12px;background:var(--chip);background:color-mix(in srgb,var(--chip) 50%,transparent);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);color:var(--fg);font-size:16px;font-family:inherit}
+.srow{display:flex;align-items:center;gap:8px;margin:0 12px 8px}
+#search{flex:1;min-width:0;margin:0;height:44px;padding:0 14px;border:1px solid var(--line);border-radius:12px;background:var(--chip);background:color-mix(in srgb,var(--chip) 50%,transparent);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);color:var(--fg);font-size:16px;font-family:inherit}
 #body{flex:1;overflow-y:auto;overscroll-behavior:contain;padding-bottom:calc(env(safe-area-inset-bottom) + 12px)}
 .row{display:flex;gap:12px;align-items:center;width:100%;min-height:64px;padding:10px 14px;border:0;border-bottom:1px solid var(--line);background:none;color:inherit;font:inherit;text-align:left}
 .ic{flex:none;width:40px;height:40px;border-radius:50%;display:grid;place-items:center;color:#fff;font-size:20px}
@@ -70,10 +71,12 @@ dl{margin:0}dt{font-size:12px;text-transform:uppercase;letter-spacing:.04em;colo
   <div id="chips"></div>
   <div id="toast"></div>
 </div>
-<button id="loc" aria-label="My location"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="6.5"/><circle cx="12" cy="12" r="1.6" fill="currentColor" stroke="none"/><path d="M12 2.5v3.5M12 18v3.5M2.5 12H6M18 12h3.5"/></svg></button>
 <section id="sheet">
   <div id="handle"><i></i></div>
+  <div class="srow">
+  <button id="loc" aria-label="My location"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="6.5"/><circle cx="12" cy="12" r="1.6" fill="currentColor" stroke="none"/><path d="M12 2.5v3.5M12 18v3.5M2.5 12H6M18 12h3.5"/></svg></button>
   <input id="search" type="search" placeholder="Search park or address" enterkeyhint="search">
+  </div>
   <div id="body"></div>
 </section>
 
