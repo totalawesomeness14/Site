@@ -13,7 +13,7 @@
 @media (prefers-color-scheme:dark){:root{--bg:#1c1c1e;--fg:#f3f4f6;--muted:#9ca3af;--line:#3a3a3c;--chip:#2c2c2e;--accent:#818cf8;--wc:#818cf8;--water:#38bdf8}}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html{-webkit-text-size-adjust:100%}
-#chips{overflow:visible}
+#chips{overflow:visible !important}
 .dd{position:relative;display:inline-block}
 .dd-btn{display:inline-flex;align-items:center;gap:8px}
 .dd-btn svg{width:14px;height:14px;flex:none;transition:transform .15s}
@@ -30,15 +30,15 @@ html{-webkit-text-size-adjust:100%}
 html,body{margin:0;height:100%;overflow:hidden;overscroll-behavior:none;font:16px/1.35 -apple-system,system-ui,Segoe UI,Roboto,sans-serif;color:var(--fg);background:var(--bg)}
 #map{position:fixed;inset:0}
 #top{position:fixed;top:0;left:0;right:0;z-index:1000;padding:calc(env(safe-area-inset-top) + 8px) 0 0}
-#chips,#chips2{display:flex;gap:8px;overflow-x:auto;padding:0 12px 4px;scrollbar-width:none}
+#chips,#chips2{display:flex;gap:8px;padding:0 12px 4px;align-items:flex-start}
 #chips::-webkit-scrollbar,#chips2::-webkit-scrollbar{display:none}
 .chip{flex:none;min-height:44px;padding:0 16px;border:0;border-radius:22px;background:var(--chip);color:var(--fg);font-size:15px;font-weight:600;font-family:inherit;box-shadow:0 1px 4px rgba(0,0,0,.25)}
 .chip{background:rgba(255,255,255,.55);background:color-mix(in srgb,var(--chip) 50%,transparent);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
 .chip.on{background:rgba(79,70,229,.85);background:color-mix(in srgb,var(--accent) 85%,transparent);color:#fff}
 .chip.toggle.on{background:rgba(22,163,74,.85)}
 #toast{white-space:pre-wrap;word-break:break-word;max-height:30vh;overflow:auto;margin:6px 12px 0;padding:10px 14px;border-radius:12px;background:var(--chip);box-shadow:0 1px 4px rgba(0,0,0,.25);font-size:14px;display:none}
-#loc{display:grid;place-items:center;padding:0;position:fixed;right:12px;top:calc(env(safe-area-inset-top) + 120px);z-index:1000;width:44px;height:44px;border-radius:50%;border:0;background:rgba(255,255,255,.55);background:color-mix(in srgb,var(--chip) 50%,transparent);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);color:var(--accent);font-size:22px;box-shadow:0 1px 4px rgba(0,0,0,.25)}
-.leaflet-top.leaflet-left{top:calc(env(safe-area-inset-top) + 112px)}
+#loc{display:grid;place-items:center;padding:0;position:fixed;right:12px;top:calc(env(safe-area-inset-top) + 68px);z-index:1000;width:44px;height:44px;border-radius:50%;border:0;background:rgba(255,255,255,.55);background:color-mix(in srgb,var(--chip) 50%,transparent);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);color:var(--accent);font-size:22px;box-shadow:0 1px 4px rgba(0,0,0,.25)}
+.leaflet-top.leaflet-left{top:calc(env(safe-area-inset-top) + 60px)}
 #sheet{position:fixed;left:0;right:0;bottom:0;z-index:1001;height:var(--h,32dvh);height:var(--h,32vh);background:var(--bg);background:color-mix(in srgb,var(--bg) 75%,transparent);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);border-radius:18px 18px 0 0;box-shadow:0 -2px 12px rgba(0,0,0,.25);display:flex;flex-direction:column;transition:height .25s ease}
 #sheet.drag{transition:none}
 #handle{padding:10px 0 6px;touch-action:none;cursor:grab}
@@ -69,7 +69,6 @@ dl{margin:0}dt{font-size:12px;text-transform:uppercase;letter-spacing:.04em;colo
 <div id="map"></div>
 <div id="top">
   <div id="chips"></div>
-  <div id="chips2"></div>
   <div id="toast"></div>
 </div>
 <button id="loc" aria-label="My location"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="6.5"/><circle cx="12" cy="12" r="1.6" fill="currentColor" stroke="none"/><path d="M12 2.5v3.5M12 18v3.5M2.5 12H6M18 12h3.5"/></svg></button>
@@ -463,7 +462,7 @@ function highlight(f) {
 }
 function select(f) {
   S.sel = f; render(); setSnap(1);
-  const z = Math.max(map.getZoom(), 16), H = innerHeight, topBar = 160;
+  const z = Math.max(map.getZoom(), 16), H = innerHeight, topBar = 110;
   // put the point in the middle of the map area that stays visible above the sheet
   const visibleCenter = (topBar + H * (1 - SNAPS[1])) / 2;
   const target = map.unproject(map.project([f.lat, f.lon], z).add([0, H / 2 - visibleCenter]), z);
@@ -477,8 +476,8 @@ const CHEVRON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stro
 $("chips").innerHTML = `<div class="dd">
   <button class="chip dd-btn" id="catBtn" aria-haspopup="listbox" aria-expanded="false"><span id="catLabel">${FILTERS[0][1]}</span>${CHEVRON}</button>
   <div class="dd-menu" id="catMenu" role="listbox" hidden>${FILTERS.map(([k, l]) => `<button class="dd-opt${k === S.filter ? " sel" : ""}" role="option" data-k="${k}">${l}</button>`).join("")}</div>
-</div>`;
-$("chips2").innerHTML = `<button class="chip toggle" id="openChip" aria-pressed="false">Open</button>`;
+</div>
+<button class="chip toggle" id="openChip" aria-pressed="false">Open</button>`;
 function setMenu(open) {
   $("catMenu").hidden = !open;
   $("catBtn").setAttribute("aria-expanded", open);
@@ -493,8 +492,8 @@ $("catMenu").onclick = e => {
   setMenu(false); drawMarkers(); render();
 };
 document.addEventListener("click", e => { if (!$("catMenu").hidden && !e.target.closest(".dd")) setMenu(false); });
-$("chips2").onclick = e => {
-  const b = e.target.closest("#openChip"); if (!b) return;
+$("openChip").onclick = e => {
+  const b = e.currentTarget;
   S.sel = null;
   S.openOnly = !S.openOnly;                          // on/off, combines with the selected category
   b.classList.toggle("on", S.openOnly);
