@@ -40,6 +40,7 @@ html,body{margin:0;height:100%;overflow:hidden;overscroll-behavior:none;font:16p
 .leaflet-top.leaflet-left{top:calc(env(safe-area-inset-top) + 60px)}
 #sheet{position:fixed;left:0;right:0;bottom:0;z-index:1001;height:var(--h,32dvh);height:var(--h,32vh);background:var(--bg);background:color-mix(in srgb,var(--bg) 75%,transparent);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);border-radius:18px 18px 0 0;box-shadow:0 -2px 12px rgba(0,0,0,.25);display:flex;flex-direction:column;transition:height .25s ease}
 #sheet.drag{transition:none}
+#sheet.slow{transition:height .33s ease}
 #handle{padding:10px 0 6px;touch-action:none;cursor:grab}
 #handle i{display:block;width:40px;height:5px;margin:0 auto;border-radius:3px;background:var(--line)}
 .srow{display:flex;align-items:center;gap:8px;margin:0 12px 8px}
@@ -518,9 +519,14 @@ $("search").addEventListener("click", () => {
   setSnap(2);                             // so the sheet can now animate smoothly
   setTimeout(() => { if (document.activeElement === proxy) box.focus({preventScroll: true}); }, 320);   // hand over to the real box (keyboard stays up)
 });
-$("proxy").addEventListener("blur", () => setTimeout(() => { if (document.activeElement !== $("search")) setSnap(preSnap); }, 0));
+function lowerSheet() {                 // keyboard closed: bring the sheet back down, more slowly than it went up
+  sheet.classList.add("slow");
+  setSnap(preSnap);
+  setTimeout(() => sheet.classList.remove("slow"), 420);
+}
+$("proxy").addEventListener("blur", () => setTimeout(() => { if (document.activeElement !== $("search")) lowerSheet(); }, 0));
 $("search").onfocus = () => { if (S.snap !== 2) { preSnap = S.snap; setSnap(2); } };
-$("search").onblur = () => setSnap(preSnap);
+$("search").onblur = () => lowerSheet();
 $("search").onkeydown = e => { if (e.key === "Enter") e.target.blur(); };
 
 let centered = false;
