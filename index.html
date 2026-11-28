@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-title" content="Washrooms">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css">
 <style>
-:root{--bg:#fff;--fg:#111827;--muted:#6b7280;--line:#e5e7eb;--chip:#fff;--accent:#4f46e5;--wc:#4f46e5;--water:#0284c7}
+:root{--ext:120px;--bg:#fff;--fg:#111827;--muted:#6b7280;--line:#e5e7eb;--chip:#fff;--accent:#4f46e5;--wc:#4f46e5;--water:#0284c7}
 @media (prefers-color-scheme:dark){:root{--bg:#1c1c1e;--fg:#f3f4f6;--muted:#9ca3af;--line:#3a3a3c;--chip:#2c2c2e;--accent:#818cf8;--wc:#818cf8;--water:#38bdf8}}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html{-webkit-text-size-adjust:100%}
@@ -26,7 +26,7 @@ html{-webkit-text-size-adjust:100%}
 #top,#chips,#chips2,#loc,#sheet,button,a{touch-action:manipulation}
 .chip,#loc{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
 html,body{margin:0;height:100%;overflow:hidden;overscroll-behavior:none;font:16px/1.35 -apple-system,system-ui,Segoe UI,Roboto,sans-serif;color:var(--fg);background:transparent}
-#map{position:fixed;top:0;left:0;right:0;height:100vh;height:100lvh}
+#map{position:fixed;top:0;left:0;right:0;bottom:calc(var(--ext) * -1)}
 #top{position:fixed;top:0;left:0;right:0;z-index:1000;padding:calc(env(safe-area-inset-top) + 8px) 0 0}
 #chips,#chips2{display:flex;gap:8px;padding:0 12px 4px;align-items:flex-start}
 #chips::-webkit-scrollbar,#chips2::-webkit-scrollbar{display:none}
@@ -37,14 +37,14 @@ html,body{margin:0;height:100%;overflow:hidden;overscroll-behavior:none;font:16p
 #toast{white-space:pre-wrap;word-break:break-word;max-height:30vh;overflow:auto;margin:6px 12px 0;padding:10px 14px;border-radius:12px;background:var(--chip);box-shadow:0 1px 4px rgba(0,0,0,.25);font-size:14px;display:none}
 #loc{display:grid;place-items:center;padding:0;flex:none;width:44px;height:44px;border-radius:50%;border:0;background:rgba(255,255,255,.55);background:color-mix(in srgb,var(--chip) 50%,transparent);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);color:var(--accent);font-size:22px;box-shadow:0 1px 4px rgba(0,0,0,.25)}
 .leaflet-top.leaflet-left{top:calc(env(safe-area-inset-top) + 60px)}
-#sheet{position:fixed;left:0;right:0;bottom:0;z-index:1001;height:var(--h,32dvh);height:var(--h,32vh);background:var(--bg);background:color-mix(in srgb,var(--bg) 75%,transparent);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);border-radius:18px 18px 0 0;box-shadow:0 -2px 12px rgba(0,0,0,.25);display:flex;flex-direction:column;transition:height .25s ease}
+#sheet{position:fixed;left:0;right:0;bottom:calc(var(--ext) * -1);z-index:1001;height:calc(var(--h,32vh) + var(--ext));background:var(--bg);background:color-mix(in srgb,var(--bg) 75%,transparent);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);border-radius:18px 18px 0 0;box-shadow:0 -2px 12px rgba(0,0,0,.25);display:flex;flex-direction:column;transition:height .25s ease}
 #sheet.drag{transition:none}
 #sheet.slow{transition:height .33s ease}
 #handle{padding:10px 0 6px;touch-action:none;cursor:grab}
 #handle i{display:block;width:40px;height:5px;margin:0 auto;border-radius:3px;background:var(--line)}
 .srow{display:flex;align-items:center;gap:8px;margin:0 12px 8px}
 #search{flex:1;min-width:0;margin:0;height:44px;padding:0 14px;border:1px solid var(--line);border-radius:12px;background:var(--chip);background:color-mix(in srgb,var(--chip) 50%,transparent);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);color:var(--fg);font-size:16px;font-family:inherit}
-#body{flex:1;overflow-y:auto;overscroll-behavior:contain;padding-bottom:calc(env(safe-area-inset-bottom) + 12px)}
+#body{flex:1;overflow-y:auto;overscroll-behavior:contain;padding-bottom:calc(var(--ext) + 12px)}
 .row{display:flex;gap:12px;align-items:center;width:100%;min-height:64px;padding:10px 14px;border:0;border-bottom:1px solid var(--line);background:none;color:inherit;font:inherit;text-align:left}
 .ic{flex:none;width:40px;height:40px;border-radius:50%;display:grid;place-items:center;color:#fff;font-size:20px}
 .wc{background:var(--wc)}.water{background:var(--water)}
@@ -546,7 +546,7 @@ function setSnap(i) { S.snap = i; sheet.style.setProperty("--h", SNAPS[i] * 100 
 setSnap(0);
 let startY = 0, startH = 0, moved = false;
 $("handle").addEventListener("pointerdown", e => {
-  startY = e.clientY; startH = sheet.offsetHeight; moved = false;
+  startY = e.clientY; startH = sheet.offsetHeight - 120; moved = false;
   sheet.classList.add("drag"); e.target.setPointerCapture && $("handle").setPointerCapture(e.pointerId);
 });
 $("handle").addEventListener("pointermove", e => {
@@ -558,7 +558,7 @@ $("handle").addEventListener("pointermove", e => {
 $("handle").addEventListener("pointerup", () => {
   sheet.classList.remove("drag");
   if (!moved) return setSnap((S.snap + 1) % SNAPS.length);
-  const frac = sheet.offsetHeight / innerHeight;
+  const frac = (sheet.offsetHeight - 120) / innerHeight;
   setSnap(SNAPS.reduce((b, v, i) => Math.abs(v - frac) < Math.abs(SNAPS[b] - frac) ? i : b, 0));
 });
 
