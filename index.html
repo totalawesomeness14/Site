@@ -73,7 +73,7 @@ dl{margin:0}dt{font-size:12px;text-transform:uppercase;letter-spacing:.04em;colo
 </div>
 <section id="sheet">
   <div id="handle"><i></i></div>
-  <div class="srow">
+  <div class="srow" id="srow">
   <button id="loc" aria-label="My location"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="6.5"/><circle cx="12" cy="12" r="1.6" fill="currentColor" stroke="none"/><path d="M12 2.5v3.5M12 18v3.5M2.5 12H6M18 12h3.5"/></svg></button>
   <input id="search" type="search" placeholder="Search park or address" enterkeyhint="search">
   </div>
@@ -406,6 +406,8 @@ function drawMarkers() {
 
 function render() {
   const body = $("body");
+  $("srow").style.display = S.sel ? "none" : "";          // no search bar or location button while a place is open
+  if (S.sel && document.activeElement === $("search")) $("search").blur();
   if (S.sel) {
     const f = S.sel;
     const dirs = `https://www.google.com/maps/dir/?api=1&destination=${f.lat},${f.lon}&travelmode=walking`;
