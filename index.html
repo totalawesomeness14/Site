@@ -468,7 +468,7 @@ function select(f) {
   S.sel = f; render(); setSnap(1);
   const z = Math.max(map.getZoom(), 16), H = innerHeight, topBar = 110;
   // put the point in the middle of the map area that stays visible above the sheet
-  const visibleCenter = (topBar + H * (1 - SNAPS[1])) / 2;
+  const visibleCenter = Math.max(topBar + 40, (topBar + H * (1 - SNAPS[1])) / 2 - 40);   // 40 px higher than dead centre
   const target = map.unproject(map.project([f.lat, f.lon], z).add([0, H / 2 - visibleCenter]), z);
   map.flyTo(target, z, {duration: .6});
   highlight(f);
