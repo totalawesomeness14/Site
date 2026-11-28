@@ -18,9 +18,9 @@ html{-webkit-text-size-adjust:100%}
 .dd-btn{display:inline-flex;align-items:center;gap:8px}
 .dd-btn svg{width:14px;height:14px;flex:none;transition:transform .15s}
 .dd-btn[aria-expanded="true"] svg{transform:rotate(180deg)}
-.dd-menu{position:absolute;top:calc(100% + 6px);left:0;min-width:210px;border-radius:14px;overflow:hidden;background:rgba(255,255,255,.55);background:color-mix(in srgb,var(--chip) 50%,transparent);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);box-shadow:0 4px 16px rgba(0,0,0,.3)}
+.dd-menu{position:absolute;top:calc(100% + 6px);left:0;width:max-content;min-width:150px;border-radius:14px;overflow:hidden;background:rgba(255,255,255,.7);background:color-mix(in srgb,var(--chip) 65%,transparent);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);box-shadow:0 4px 16px rgba(0,0,0,.3)}
 .dd-menu[hidden]{display:none}
-.dd-opt{display:block;width:100%;min-height:48px;padding:0 16px;border:0;border-bottom:1px solid var(--line);background:none;color:var(--fg);font-size:16px;font-family:inherit;text-align:left}
+.dd-opt{display:block;width:100%;min-height:48px;padding:0 14px;border:0;border-bottom:1px solid var(--line);background:none;color:var(--fg);font-size:16px;font-family:inherit;text-align:left}
 .dd-opt:last-child{border-bottom:0}
 .dd-opt.sel{color:var(--accent);font-weight:600}
 .dd-opt.sel::after{content:"✓";float:right}
