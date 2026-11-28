@@ -98,15 +98,15 @@ const esc = s => String(s).replace(/[&<>"']/g, c => ({"&": "&amp;", "<": "&lt;",
 const norm = s => s.toLowerCase().replace(/[^a-z0-9]/g, "");
 
 /* ---------- Map ---------- */
-const map = L.map("map", {zoomControl: false, attributionControl: true, renderer: L.svg({padding: 0.8})}).setView(DEFAULT, 12);
+const map = L.map("map", {zoomControl: false, attributionControl: true, renderer: L.svg({padding: 0.4})}).setView(DEFAULT, 12);
 // A tile layer that also requests an extra ring of tiles beyond the screen edge
 const PaddedTiles = L.TileLayer.extend({
   _getTiledPixelBounds(center) {
-    const b = L.TileLayer.prototype._getTiledPixelBounds.call(this, center), pad = 384;
+    const b = L.TileLayer.prototype._getTiledPixelBounds.call(this, center), pad = 256;
     return L.bounds(b.min.subtract([pad, pad]), b.max.add([pad, pad]));
   }
 });
-new PaddedTiles("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {maxZoom: 19, attribution: "© OpenStreetMap", keepBuffer: 6, updateWhenIdle: false, updateInterval: 100}).addTo(map);
+new PaddedTiles("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {maxZoom: 19, attribution: "© OpenStreetMap", keepBuffer: 4, updateWhenIdle: false, updateWhenZooming: false, updateInterval: 100}).addTo(map);
 const layer = L.layerGroup().addTo(map);
 map.on("click", () => { if (S.sel) { S.sel = null; render(); setSnap(0); } });
 let me = null;
@@ -413,7 +413,7 @@ function drawMarkers() {
     L.circleMarker([f.lat, f.lon], {radius: 9, color: "#fff", weight: 2, fillColor: st === false ? "#9ca3af" : (colour[f.kind] || colour.washroom), fillOpacity: st === false ? .7 : 1, bubblingMouseEvents: false})
       .on("click", () => select(f)).addTo(layer);
   }
-  requestAnimationFrame(() => requestAnimationFrame(() => { pane.style.transition = "opacity .35s ease"; pane.style.opacity = 1; }));   // …then fade in
+  requestAnimationFrame(() => requestAnimationFrame(() => { pane.style.transition = "opacity .35s ease"; pane.style.opacity = 1; setTimeout(() => { pane.style.transition = ""; pane.style.opacity = ""; }, 450); }));   // …then fade in, then clear the effect
 }
 
 function render() {
